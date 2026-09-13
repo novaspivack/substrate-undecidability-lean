@@ -114,7 +114,7 @@
 % ============================================================================
 \begin{abstract}
 \noindent
-We show that the question whether physical reality is discrete or continuous, on its two principal readings (finite vs.\ infinite information density; computable vs.\ non-computable dynamics), cannot be decided by any finite-resource observer internal to the system. Two independent barriers are proved and machine-checked in Lean~4: a \emph{topological} barrier --- substrate discreteness is not a finitely determined (clopen) property of observable transcripts, so no finite body of evidence decides it (\leanref{Substrate.substrate\_not\_finitely\_determined}) --- and a \emph{recursion-theoretic} barrier --- no candidate law, even when supplied, can be internally certified as the law, by reduction to the halting problem (\leanref{Substrate.law\_match\_undecidable}). Under Perfect Self-Containment (PSC) these results make substrate discreteness an \emph{outsourced} property (\leanref{Substrate.substrate\_not\_internally\_decidable}), for which the only admissible adjudicator --- by a uniqueness argument this paper cites from the companion NEMS programme rather than re-derives --- is minimum-description-length (MDL) selection over complete law-sets, which selects the finite-\emph{description} class: computable transcripts together with an adjudicative extension (``glimmer'') that resolves an apparent tension with the programme's own account of physical randomness, since the purely computable class alone would contradict its determinism no-go result. We explain why Planck-scale grid searches are structurally unable to settle the question, identify asymptotic scaling exponents as the only finite observables carrying substrate information, and state the results' limits: the glimmer extension's classification is fully machine-checked; only the physical premise underlying it (that the actual Born measure constitutes complete internal semantics) and the question of which substrate actually obtains are left, honestly, open.
+We show that the question whether physical reality is discrete or continuous, on its two principal readings (finite vs.\ infinite information density; computable vs.\ non-computable dynamics), cannot be decided by any finite-resource observer internal to the system. Two independent barriers are proved and machine-checked in Lean~4: a \emph{topological} barrier --- substrate discreteness is not a finitely determined (clopen) property of observable transcripts, so no finite body of evidence decides it (\leanref{Substrate.substrate\_not\_finitely\_determined}) --- and a \emph{recursion-theoretic} barrier --- no candidate law, even when supplied, can be internally certified as the law, by reduction to the halting problem (\leanref{Substrate.law\_match\_undecidable}). Under Perfect Self-Containment (PSC) these results make substrate discreteness an \emph{outsourced} property (\leanref{Substrate.substrate\_not\_internally\_decidable}), for which the only admissible adjudicator --- by a uniqueness argument this paper cites from the companion NEMS programme rather than re-derives --- is minimum-description-length (MDL) selection over complete law-sets, which selects the finite-\emph{description} class: computable transcripts together with an adjudicative extension (``glimmer'') that resolves an apparent tension with the programme's own account of physical randomness, since the purely computable class alone would contradict its determinism no-go result. We explain why Planck-scale grid searches are structurally unable to settle the question, identify asymptotic scaling exponents as the only finite observables carrying substrate information, and state the results' limits: the glimmer extension's classification is fully machine-checked; two physical premises underlying it (that the actual Born measure constitutes complete internal semantics, and that a degree-\(\mathbf{0}'\) adjudication bound proved elsewhere for a specific physical framework transfers to this paper's framework-agnostic model) and the question of which substrate actually obtains are left, honestly, open.
 
 \NovaZenodoInAbstract
 \end{abstract}
@@ -223,8 +223,8 @@ however long, settles it (\cref{thm:notfindet}). Second, even supplying the obse
 complete candidate law does not help: no internal, finite-resource procedure can certify that
 the law is the correct one, on pain of deciding the halting problem (\cref{thm:lawbarrier}).
 Axis (C) is orthogonal to (A) and (B); it is addressed directly by the glimmer corollary
-(\cref{sec:glimmer}), whose classification is machine-checked, leaving only the Born-martingale
-physical premise open (\cref{sec:open}).
+(\cref{sec:glimmer}), whose classification is machine-checked, leaving the Born-martingale
+physical premise and a second, distinct framework-transfer premise open (\cref{sec:open}).
 
 The two barriers are of different character, and keeping them apart is one of the paper's
 main points. The first --- call it the \emph{evidential} barrier --- is purely topological: it
@@ -559,14 +559,14 @@ B\('\). Efficient computability \emph{(subsidiary to B --- complexity, not compu
 C. Chance & Deterministic & Objective randomness & Bell's theorem, assuming no superdeterminism \citep{Bell1964}; Hossenfelder--Palmer's case for taking superdeterminism seriously is the standing challenge to that assumption, not support for it \citep{HossenfelderPalmer2020} & Interacts with B via the ``glimmer'' programme (\(\Omega\)-like traces at degree \(\mathbf{0}'\)); \cref{sec:open} \\
 \bottomrule
 \end{tabular}
-\caption{The axes conflated by ``is the universe discrete or continuous.'' This paper's Part~I theorems (\cref{sec:parti}) show axes A and B, \emph{taken together} as the discrete-versus-strict-continuum distinction (\cref{sec:model}), are internally undecidable; \cref{rem:axisA} gives a separate, axis-A-specific dense pair (\(\mathtt{Dfin}\), eventually periodic sequences) to which the same mechanism applies directly, machine-checked (\cref{rem:axisA}). Axis B\('\) is a distinct, complexity-theoretic question (efficiency, not computability) that the theorems do not address and that is listed here only to correctly separate it from axis B's existing evidence. Axis C is orthogonal and is addressed by the glimmer corollary (\cref{sec:glimmer}): its definitions and separations are machine-checked, with one bridge lemma (the Born-martingale completeness premise) disclosed as open.}
+\caption{The axes conflated by ``is the universe discrete or continuous.'' This paper's Part~I theorems (\cref{sec:parti}) show axes A and B, \emph{taken together} as the discrete-versus-strict-continuum distinction (\cref{sec:model}), are internally undecidable; \cref{rem:axisA} gives a separate, axis-A-specific dense pair (\(\mathtt{Dfin}\), eventually periodic sequences) to which the same mechanism applies directly, machine-checked (\cref{rem:axisA}). Axis B\('\) is a distinct, complexity-theoretic question (efficiency, not computability) that the theorems do not address and that is listed here only to correctly separate it from axis B's existing evidence. Axis C is orthogonal and is addressed by the glimmer corollary (\cref{sec:glimmer}): its definitions and separations are machine-checked, with two bridge premises (Born-martingale completeness and the degree-\(\mathbf{0}'\) framework transfer) disclosed as open.}
 \label{tab:axes}
 \end{table}
 
 Axes~A and~B are exactly the two the theorems below show to be internally undecidable; axis~C
 is genuinely different in kind and is addressed only by the glimmer corollary
-(\cref{sec:glimmer}), whose definitions and separations are machine-checked but whose one
-remaining bridge lemma is disclosed as open, not folded in as an established result. Axis~B\('\)
+(\cref{sec:glimmer}), whose definitions and separations are machine-checked but whose two
+remaining bridge premises are disclosed as open, not folded in as an established result. Axis~B\('\)
 (\cref{tab:axes}) is also not addressed: it is a complexity-theoretic question about efficiency,
 not a computability question, and lies outside what \cref{thm:lawbarrier} or any other theorem
 below speaks to. The Bombelli--Henson--Sorkin causal-set result
@@ -962,15 +962,18 @@ its own instance of \cref{thm:notfindet} are machine-checked in a companion Lean
 (\leanref{Substrate/Glimmer.lean}, part of the audited, sorry-free build); the
 finite-description consequence of \cref{thm:mdl-uniqueness} depends on this class existing at
 all, so \cref{sec:glimmer} states it as settled content rather than an open problem. What remains genuinely open,
-independently of that Lean status, is the single \textbf{Born-martingale lemma} --- that the
-actual physical Born measure, as complete internal semantics per NEMS Papers~13/14
-\citep{SpivackP13,SpivackP14}, admits no successful computable martingale on the realized
-transcript, given the non-degeneracy premise of NEMS Paper~12 \citep{SpivackP12} and the degree
-bound of UGP Paper~51 \citep{SpivackUGP51}. We state the dependency chain honestly in
+independently of that Lean status, are \textbf{two} distinct premises. The \textbf{Born-martingale
+lemma}: that the actual physical Born measure, as complete internal semantics per NEMS
+Papers~13/14 \citep{SpivackP13,SpivackP14}, admits no successful computable martingale on the
+realized transcript, given the non-degeneracy premise of NEMS Paper~12 \citep{SpivackP12}. The
+\textbf{framework-transfer premise}: that the degree bound of UGP Paper~51 \citep{SpivackUGP51}
+--- proved there for the GTE adjudication layer under that paper's own named premise bundle, not
+for an arbitrary framework's transcripts --- transfers to this paper's framework-agnostic
+\texttt{World} model. We state the dependency chain honestly in
 \cref{sec:glimmer} and do not claim more of the corollary than is actually established: the
 mathematical machinery (the definitions, the separations, and the elementary bet-everything
-martingale fact) is machine-checked; the physical completeness premise connecting it to the
-actual Born measure is not.
+martingale fact) is machine-checked; the two physical/interpretive premises connecting it to the
+actual Born measure and to UGP Paper~51's degree bound are not.
 
 \item \textbf{The theorems do not say discreteness is unfalsifiable in every sense.}
 \cref{thm:notfindet} rules out \emph{finitely determined} (clopen) properties, but asymptotic
@@ -1320,10 +1323,15 @@ applies to any physically realized, finite-lifetime transcript.
 \emph{Four-class taxonomy.} Fix an effective description \(E\) = (computable law with
 computable Born measure \(\mu\), internal observer) and let \(f : \N \to \N\) be the
 adjudication transcript. The four classes below exhaust all possible adjudication transcripts
-relative to \(E\) precisely because UGP Paper~51's bound \citep{SpivackUGP51} establishes
-\(f \le_T \mathbf{0}'\) under that paper's hypotheses (the DSAC model) for transcripts arising in
-this framework, ruling out a residual fifth case --- non-computable, not computably random, and
-not \(\Delta^0_2\) --- that would otherwise fall outside all four boxes below.
+relative to \(E\) \emph{conditionally} on a second premise, disclosed in full at
+derivation-chain step~3 below with the same honesty as the Born-martingale lemma (step~2): UGP
+Paper~51's bound \citep{SpivackUGP51} proves \(f \le_T \mathbf{0}'\) for the GTE adjudication
+layer specifically, under that paper's own named premise bundle (the Arithmetic Self-Reference
+record theory and its \(D_1\)--\(D_5\) DSAC/\([D]\)-adjudicator constraints), not as a proved
+consequence for an arbitrary framework's transcripts. Ruling out the residual fifth case ---
+non-computable, not computably random, and not \(\Delta^0_2\) --- for \emph{this} paper's
+framework-agnostic \texttt{World} model therefore requires importing that bound across a
+framework boundary; step~3 names this precisely and discloses it as open.
 
 \begin{center}
 \small
@@ -1334,7 +1342,7 @@ not \(\Delta^0_2\) --- that would otherwise fall outside all four boxes below.
 1. Pseudorandom & \(f\) computable & any PRNG & excluded by the non-degeneracy premise \citep{SpivackP12} plus the Born-martingale lemma (below); \emph{not} by Paper~11 alone \\
 2\('\). Unpredictable, compressible & \(f\) not computable, not computably random, \(f \le_T \mathbf{0}'\) & the halting set itself & excluded by the \emph{same} lemma as class~1 --- see the derivation chain below \\
 2. \textbf{Glimmer} & \(f\) computably random relative to \(\mu\) \textbf{and} \(f \le_T \mathbf{0}'\) (i.e.\ \(\Delta^0_2\)) & \(\Omega\) & the claimed class for physical randomness \\
-3. Truly random & \(f\) computably random relative to \(\mu\), not \(\Delta^0_2\) & a.e.\ Martin-L\"of-random sequence & excluded by UGP Paper~51 \citep{SpivackUGP51} \\
+3. Truly random & \(f\) computably random relative to \(\mu\), not \(\Delta^0_2\) & a.e.\ Martin-L\"of-random sequence & excluded by UGP Paper~51 \citep{SpivackUGP51}, conditional on the framework-transfer premise (derivation chain, step~3) \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -1385,9 +1393,28 @@ object to bridge directly. What remains open is therefore exactly and only a
 non-question-begging formalization of the physical premise itself as a predicate on realized
 transcripts; this is the one piece that cannot be closed without new physical or interpretive
 input, and this paper states the dependency honestly rather than treating it as established.
-\item \textbf{UGP Paper~51 (adjudication at degree exactly \(\mathbf{0}'\)).} \(f \le_T
-\mathbf{0}'\) \citep{SpivackUGP51} \(\Rightarrow\) \(f \notin\) class~3.
-\item Hence, conditionally on step~2's premise, \(f \in\) class~2 (glimmer).
+\item \textbf{UGP Paper~51 (adjudication at degree exactly \(\mathbf{0}'\)) --- and the
+framework-transfer premise (open).} \(f \le_T \mathbf{0}'\) \(\Rightarrow\) \(f \notin\)
+class~3. UGP Paper~51 \citep{SpivackUGP51} proves this bound for the adjudication layer of the
+GTE physical framework specifically: its own premise bundle (named PR1--PR5 there) is stated
+over that framework's Arithmetic Self-Reference record theory --- finite PSC-admissible winding
+sectors, the \(D_1\)--\(D_5\) constraints on a DSAC/\([D]\)-class adjudicator --- and that paper
+states explicitly that its theorems are ``the GTE-specific physical realization'' of a more
+general, framework-independent claim it attributes to the NEMS formal theory of transputation,
+not a proof of that general claim itself. This paper's \texttt{World} structure
+(\cref{def:world}) is deliberately framework-agnostic (an arbitrary state type, step function,
+and finite readout; see also the modeling note below) and carries none of that record-theoretic
+structure, so using \(f \le_T \mathbf{0}'\) for \emph{this} paper's adjudication transcripts is
+not a proved consequence of \citep{SpivackUGP51} but a further, currently undischarged
+\textbf{framework-transfer premise}: that whatever process generates a genuinely
+complete-semantics transcript in this framework instantiates UGP Paper~51's DSAC/\([D]\)-class
+adjudicator model (or the more general abstract theory that paper cites but does not itself
+prove). No counterexample is known and we are not aware of an argument that the premise fails,
+but it is logically independent of the Born-martingale lemma above, it is not established by
+\citep{SpivackUGP51}, and the class-3 exclusion here, and the four-class exhaustiveness claim
+stated at the start of this subsection, should both be read as conditional on it.
+\item Hence, conditionally on step~2's premise and step~3's framework-transfer premise,
+\(f \in\) class~2 (glimmer).
 \end{enumerate}
 We note explicitly that step~2's supporting fact
 (\leanref{Substrate.computable\_not\_random}) establishes only computable-randomness immunity
@@ -1484,8 +1511,9 @@ classification of \(\D\)/\(\mathtt{Cstrict}\) (\cref{cor:measure-typicality}), t
 corollary's definitions and separations (\cref{sec:glimmer}), and the axis-A dense pair
 (\cref{rem:axisA}) are all proved and machine-checked (\A, Appendix~\ref{app:status}) in Lean~4
 against Mathlib, with zero \texttt{sorry} and zero custom axioms. The only exceptions on the
-Lean side of the ledger are the Born-martingale lemma's physical completeness premise
-(\cref{sec:glimmer}, genuinely open, not a formalization gap) and the \(\varepsilon\)-tolerant
+Lean side of the ledger are the Born-martingale lemma's physical completeness premise and the
+framework-transfer premise for UGP Paper~51's degree bound (both \cref{sec:glimmer}, genuinely
+open, not a formalization gap) and the \(\varepsilon\)-tolerant
 randomized generalization of the probabilistic-observers result (\cref{sec:open}). The
 \emph{uniqueness}-of-MDL half of Theorem~5 (\cref{thm:mdl-uniqueness}) is \AMDL: an argument
 cited to NEMS Papers~34 and~84 \citep{SpivackP34,SpivackP84}, not a Mathlib reduction carried
@@ -1535,11 +1563,14 @@ question, since the reduction's diagonal construction currently exploits classic
 unitary evolution without decoherence or measurement entering the model. Third, axis~C
 (objective randomness) is addressed directly: the glimmer corollary (\cref{sec:glimmer}) is
 proved in this paper, with its definitions and derivation chain machine-checked, because
-\cref{thm:mdl-uniqueness}'s conclusion is not correctly statable without it. One honest gap
-remains, and we disclose it precisely rather than rounding it up to a claimed result: the
+\cref{thm:mdl-uniqueness}'s conclusion is not correctly statable without it. Two honest gaps
+remain, and we disclose both precisely rather than rounding them up to a claimed result: the
 Born-martingale lemma itself --- that the actual physical Born measure admits no successful
 computable martingale on the realized transcript --- is not yet proved anywhere in the
-programme. That is the \emph{only} gap: the Lean module proving the classification's
+programme; and the framework-transfer premise --- that UGP Paper~51's degree-\(\mathbf{0}'\)
+bound, proved there for the GTE adjudication layer under that paper's own premise bundle,
+transfers to this paper's framework-agnostic \texttt{World} model --- is likewise not proved
+anywhere. Those are the \emph{only} gaps: the Lean module proving the classification's
 mathematical content (\leanref{Substrate/Glimmer.lean}) is part of this repository's audited,
 sorry-free build, as disclosed in full in \cref{sec:glimmer}.
 
@@ -1554,8 +1585,9 @@ certainty, evaluated against a measure that does not already assign full mass to
 construction. The cardinality strengthening of Theorem~5, \cref{cor:cardinality}, forecloses a
 natural ``pool enough observers'' escape attempt, showing the barrier survives even an
 uncountable family of cooperating internal observers. And the glimmer corollary's missing
-Born-martingale lemma is the single result standing between this paper's programme and a
-genuine resolution of axis~C's relationship to axis~B, which is why we name it explicitly as
+Born-martingale lemma, together with the framework-transfer premise for UGP Paper~51's degree
+bound, are the two results standing between this paper's programme and a
+genuine resolution of axis~C's relationship to axis~B, which is why we name them explicitly as
 the actual formal target rather than leaving axis~C as an unstructured gap.
 
 % ============================================================================
@@ -1584,16 +1616,23 @@ has zero formalization of POVMs, density operators, or completely-positive trace
 (CPTP) maps (verified by direct search), so even \emph{stating} the quantum extension formally
 --- not merely proving \cref{thm:lawbarrier}'s quantum analogue --- is future infrastructure
 work, not a proof gap in the existing development.
-\item \textbf{The Born-martingale lemma} (\cref{sec:glimmer}) --- the one genuinely open piece
-of the glimmer corollary, whose definitions, four-class taxonomy, and derivation chain are
-settled Part~II content (\cref{sec:glimmer}), not an open problem. What remains is a single
-physical/interpretive premise: that the actual physical Born measure, as complete internal
-semantics per NEMS Papers~13/14 \citep{SpivackP13,SpivackP14}, admits no successful computable
-martingale on the realized transcript. This is not a randomness-theory gap --- the martingale
-and computable-randomness machinery the lemma needs is already fully built and machine-checked
-(\cref{sec:glimmer}) --- and it cannot be closed by definitional fiat without smuggling the
-conclusion; see \cref{sec:glimmer} for the full derivation chain and precisely why this premise,
-and only this premise, remains open.
+\item \textbf{The glimmer corollary's two open premises} (\cref{sec:glimmer}) --- the
+definitions, four-class taxonomy, and derivation chain of the glimmer corollary are settled
+Part~II content (\cref{sec:glimmer}), not an open problem; what remains open are two distinct
+physical/interpretive premises. The \textbf{Born-martingale lemma}: that the actual physical
+Born measure, as complete internal semantics per NEMS Papers~13/14
+\citep{SpivackP13,SpivackP14}, admits no successful computable martingale on the realized
+transcript. This is not a randomness-theory gap --- the martingale and computable-randomness
+machinery the lemma needs is already fully built and machine-checked (\cref{sec:glimmer}) ---
+and it cannot be closed by definitional fiat without smuggling the conclusion. The
+\textbf{framework-transfer premise}: that UGP Paper~51's degree-\(\mathbf{0}'\) bound
+\citep{SpivackUGP51} --- proved there for the GTE adjudication layer under that paper's own
+named premise bundle, which is stated over that framework's specific record theory and not for
+an arbitrary framework's transcripts --- transfers to this paper's framework-agnostic
+\texttt{World} model, which shares none of that bundle's record-theoretic structure. Neither
+premise is discharged by this paper's own machinery, and they are logically independent of one
+another; see \cref{sec:glimmer} for the full derivation chain and precisely why these two
+premises, and only these two, remain open.
 \item \textbf{Probabilistic observers.} The deterministic class-advantage obstruction is
 proved: an internal test has positive acceptance on \(\D\) if and only if it has positive
 acceptance on \(\mathtt{Cstrict}\) (\leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict}, module
@@ -1647,8 +1686,9 @@ places the epistemic status of finite, compressive physical theories --- includi
 out of the UGP programme --- exactly where Theorem~5 puts it: strong evidence, never
 certification. The results are not silent on objective randomness: the glimmer
 corollary's definitions and separations are machine-checked (\cref{sec:glimmer}) --- but the
-Born-martingale lemma's physical completeness premise, and the question of which substrate
-actually obtains, are left, honestly, as open.
+Born-martingale lemma's physical completeness premise, the framework-transfer premise
+connecting UGP Paper~51's degree-\(\mathbf{0}'\) bound to this paper's framework-agnostic
+model, and the question of which substrate actually obtains, are left, honestly, as open.
 
 % ============================================================================
 % APPENDIX A
@@ -1792,6 +1832,7 @@ Probabilistic observers, \(\varepsilon\)-tolerant \emph{randomized} generalizati
 \S\ref{sec:glimmer} glimmer definitions (\leanref{Substrate.LimitComputable}, \leanref{Substrate.BornMeasure}, \leanref{Substrate.Glimmer}, etc.), limit-computability density pair, \leanref{Substrate.limitComputable\_not\_finitely\_determined}, \leanref{Substrate.glimmer\_finite\_description}, \leanref{Substrate.computable\_not\_random}, the bet-everything martingale construction (\leanref{Substrate.BetMartingale.bet}/\leanref{Substrate.BetMartingale.bet\_succeeds}), and the separations built on it (\leanref{Substrate.glimmer\_not\_computable}, \leanref{Substrate.glimmer\_disjoint\_D}, \leanref{Substrate.glimmer\_subset\_Cstrict}) & \A~(module \leanref{Substrate/Glimmer.lean}, part of the audited, sorry-free build; imported by \leanref{Substrate.lean}; every declaration confirmed by \texttt{\#print axioms} to depend on only \texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}) \\
 \S\ref{sec:glimmer} Glimmer non-emptiness (Chaitin's \(\Omega\)) & \A/\textsc{d}~(cited to Downey--Hirschfeldt \citep{DowneyHirschfeldt2010}, not built, by design) \\
 \S\ref{sec:glimmer} Born-martingale lemma (the physical completeness premise) & \textbf{Open} --- not proved here or anywhere in the programme at time of writing. Not a randomness-theory gap: the martingale/computable-randomness machinery (\leanref{Substrate.computable\_not\_random}, \leanref{Substrate.BetMartingale.bet\_succeeds}) is machine-checked (row above); the unrestricted universal form of the premise is in fact \emph{false} here (\leanref{Substrate.BetMartingale.bet\_succeeds} beats every \emph{computable} non-degenerate \(f\)), so defining ``complete internal semantics'' as ``\(f\) is computably random'' would smuggle the conclusion. The nearest existing candidate, \texttt{nems-lean}'s \texttt{BICS} (Papers~13/14), is a quantum semantic-architecture predicate over density operators, categorically the wrong kind of object for a realized-sequence bridge. What is missing is specifically a non-question-begging formalization of the physical premise as a predicate on realized transcripts (\cref{sec:open}) \\
+\S\ref{sec:glimmer} framework-transfer premise (UGP Paper~51's degree-\(\mathbf{0}'\) bound applied to this paper's transcripts) & \textbf{Open} --- not proved here or anywhere in the programme at time of writing, and logically independent of the Born-martingale lemma (row above). UGP Paper~51 \citep{SpivackUGP51} proves \(f \le_T \mathbf{0}'\) for the GTE adjudication layer specifically, under that paper's own named premise bundle (its Arithmetic Self-Reference record theory and \(D_1\)--\(D_5\) DSAC/\([D]\)-adjudicator constraints), and that paper itself attributes the framework-independent form of the claim to a separate work (the NEMS formal theory of transputation), not to its own theorems. This paper's \texttt{World} structure (\cref{def:world}) is deliberately framework-agnostic and carries none of that record-theoretic structure, so importing the bound for \emph{this} paper's transcripts is a further, undischarged premise, not a proved consequence of \citep{SpivackUGP51} \\
 \cref{rem:axisA} axis-A pair (\leanref{Substrate.Dfin}, \leanref{Substrate.Dfin\_iff\_eventuallyPeriodic}, \leanref{Substrate.axisA\_not\_finitely\_determined}) & \A~(module \leanref{Substrate/AxisA.lean}, part of the audited, sorry-free build; imported by \leanref{Substrate.lean}; every declaration confirmed by \texttt{\#print axioms} to depend on only \texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}) \\
 \end{longtable}
 \normalsize
