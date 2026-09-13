@@ -1,0 +1,84 @@
+% nova-publishing / zpo doi inject — standard anchor for Zenodo paper DOI (NEMS and other suites).
+% Add after \documentclass. Prefer **after** \usepackage{hyperref} when this file uses \href in macros.
+%   \input{nova_zenodo_doi_placeholder}
+% or with a path if this file lives with your suite preamble:
+%   \input{path/to/nova_zenodo_doi_placeholder}
+%
+% Then run: zpo doi inject --artifact <publication-id> --apply
+% With --require-tex-markers, injection fails until this file is \input{} (markers must exist in the resolved .tex).
+%
+% Placement (SPEC / docs: DOI_PROPAGATION.md):
+%   • Primary (recommended for all program papers): \NovaZenodoAfterTitle immediately after \maketitle.
+%   • Optional duplicate: \NovaZenodoInAbstract before \end{abstract} (--abstract-doi-line on inject).
+% Preprint notice: \NovaZenodoPreprintMark is included at the top of \NovaZenodoAfterTitle (first page, under
+%   the title block). Override with \renewcommand{\NovaZenodoPreprintMark}{...} or {} if a journal version
+%   must omit it. For a banner *above* \maketitle, call \NovaZenodoPreprintMark once there and \renewcommand
+%   to empty before \NovaZenodoAfterTitle to avoid duplicating.
+%
+% The DOI value is written between % NOVA_ZPO_DOI_BEGIN / END by zpo doi inject (\def\NovaZenodoDOI{...}).
+% Optional program hub / catalog DOI: % NOVA_ZPO_HUB_DOI_BEGIN / END (\def\NovaZenodoHubDOI{...}); inject via
+% ``zpo doi inject --hub-doi ...`` or ``--hub-artifact nems-program-catalog``.
+%
+\makeatletter
+% Expand #1 once, then test emptiness (plain \detokenize{\Macro} does NOT expand \Macro first).
+\providecommand{\NovaZenodoIfDoiEmpty}[1]{%
+  \if\relax\detokenize{#1}\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi}
+\makeatother
+%
+% First-page disclosure (Zenodo preprints / working papers). Keep concise for title-page metadata.
+\providecommand{\NovaZenodoPreprintMark}{%
+  \textbf{Preprint.}%
+}
+%
+\providecommand{\NovaZenodoArchivalLine}{%
+  \expandafter\NovaZenodoIfDoiEmpty\expandafter{\NovaZenodoDOI}%
+  {\textit{Archival version (Zenodo):} \emph{[DOI pending publication]}}%
+  {\textit{Archival version (Zenodo):} %
+  \begingroup
+  \edef\NovaZenodo@href{\endgroup\noexpand\href{https://doi.org/\NovaZenodoDOI}{https://doi.org/\NovaZenodoDOI}}%
+  \NovaZenodo@href}%
+}
+%
+\providecommand{\NovaZenodoHubArchivalLine}{%
+  \expandafter\NovaZenodoIfDoiEmpty\expandafter{\NovaZenodoHubDOI}%
+  {}%
+  {\textit{NEMS program hub (Zenodo):} %
+  \begingroup
+  \edef\NovaZenodo@hrefhub{\endgroup\noexpand\href{https://doi.org/\NovaZenodoHubDOI}{https://doi.org/\NovaZenodoHubDOI}}%
+  \NovaZenodo@hrefhub}%
+}
+%
+% After \maketitle — canonical visible placement (first page, under title block).
+\providecommand{\NovaZenodoAfterTitle}{%
+  \par\smallskip
+  \begingroup
+  \centering
+  \small
+  \NovaZenodoPreprintMark
+  \par\smallskip
+  \NovaZenodoArchivalLine
+  \par
+  \NovaZenodoHubArchivalLine
+  \par
+  \endgroup
+  \smallskip
+}
+%
+% End of abstract — optional; use when --abstract-doi-line is passed to zpo doi inject.
+\providecommand{\NovaZenodoInAbstract}{%
+  \par\smallskip\noindent
+  \NovaZenodoArchivalLine
+}
+%
+% NOVA_ZPO_DOI_BEGIN
+\def\NovaZenodoDOI{10.5281/zenodo.22726191}
+% Use \href{https://doi.org/...}{...} or \texttt{\NovaZenodoDOI} where you cite the archival record (\url{...} does not expand \NovaZenodoDOI under hyperref).
+% NOVA_ZPO_DOI_END
+%
+% NOVA_ZPO_HUB_DOI_BEGIN
+\def\NovaZenodoHubDOI{}
+% NOVA_ZPO_HUB_DOI_END

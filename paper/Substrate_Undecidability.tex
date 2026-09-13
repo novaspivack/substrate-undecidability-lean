@@ -1,0 +1,1790 @@
+% Discrete or Continuous? — LaTeX source (Lean 4 / Mathlib companion library: substrate-undecidability-lean)
+% Companion formal artifact: Substrate/*.lean (module Substrate, repository substrate-undecidability-lean)
+
+\documentclass[11pt]{article}
+\input{nova_zenodo_doi_placeholder}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{stmaryrd}
+\usepackage{tcolorbox}
+\usepackage{natbib}
+\usepackage{placeins}
+\usepackage{cleveref}
+
+\newtcolorbox{keybox}[1][]{
+  colback=blue!4, colframe=blue!35,
+  arc=3pt, boxrule=0.5pt,
+  fonttitle=\bfseries, #1
+}
+
+% Allow line breaks in long Lean identifiers (namespaces, underscores, CamelCase).
+\ExplSyntaxOn
+\tl_new:N \l__su_leanref_tl
+\NewDocumentCommand \leanref { m }
+  {
+    \tl_set:Nn \l__su_leanref_tl { #1 }
+    \regex_replace_all:nnN { \c{_} } { \c{_} \c{allowbreak} } \l__su_leanref_tl
+    \regex_replace_all:nnN { \. } { . \c{allowbreak} } \l__su_leanref_tl
+    \regex_replace_all:nnN { / } { / \c{allowbreak} } \l__su_leanref_tl
+    \regex_replace_all:nnN { ([a-z])([A-Z]) } { \1 \c{allowbreak} \2 } \l__su_leanref_tl
+    \regex_replace_all:nnN { ([0-9])([A-Z]) } { \1 \c{allowbreak} \2 } \l__su_leanref_tl
+    \texttt{\small \tl_use:N \l__su_leanref_tl }
+  }
+\ExplSyntaxOff
+
+% Long \leanref tokens and inline monospace identifiers can overflow a justified
+% line; relax line-breaking globally rather than hand-tune every occurrence.
+\sloppy
+\setlength{\emergencystretch}{3em}
+
+% Theorem, lemma, and corollary each get their own independent counter (not shared,
+% not reset per section) so that the displayed number matches this paper's own
+% cross-references (``Theorem 4'', ``Lemma 2.1'', ``Corollary 4.1'') exactly, with no
+% second, conflicting auto-generated number. Definitions and remarks keep the original
+% per-section shared-counter behavior, since nothing elsewhere hand-references their
+% numbers and that numbering was never in conflict.
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}[definition]{Remark}
+\theoremstyle{plain}
+\renewcommand{\thelemma}{2.\arabic{lemma}}
+\renewcommand{\thecorollary}{\arabic{theorem}.\arabic{corollary}}
+
+% The theorem and corollary counters are manually reset/decremented at several points
+% below (via \setcounter/\addtocounter) so that displayed numbers match this paper's
+% own hand-written cross-references. hyperref's PDF-internal anchor names are derived
+% from the same raw counter values by default, so a manual reset that revisits a
+% previously-used counter value produces two different environments claiming the same
+% PDF destination name (silently sending some \cref hyperlinks to the wrong target,
+% even though the on-page displayed number is unaffected). Every colliding pair here
+% falls on a different page, so prefixing the hyperref anchor with the page number
+% disambiguates them completely; this is hyperref's own documented remedy for counters
+% reset after they have already been used for a destination.
+\renewcommand{\theHtheorem}{\thepage.\arabic{theorem}}
+\renewcommand{\theHcorollary}{\thepage.\arabic{theorem}.\arabic{corollary}}
+
+% Theorem 4' is a genuinely distinct result from Theorem 4 (a strictly sharper reduction, not
+% a restatement), so it is not folded into Theorem 4 as a labeled part; but it is also not the
+% *next* item in the main sequence, since Theorem 5 already occupies that slot in this paper's
+% own hand-written cross-references throughout. \newtheorem* (unnumbered, from amsthm) gives it
+% a real theorem environment with its own heading text fixed to "Theorem 4'" directly, so it
+% never touches the shared theorem counter and cannot collide with any other numbered theorem's
+% hyperref anchor.
+\newtheorem*{thmfourprime}{Theorem~4\('\)}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Baire}{\N \to \N}
+\newcommand{\A}{\textsc{a\_lean}}
+\newcommand{\AMDL}{\textsc{a\_mdl}}
+\newcommand{\D}{\mathrm{D}}
+
+\title{Discrete or Continuous?\\[0.2em]
+  {\large Why No Internal Observer Can Decide, and What Can Adjudicate Instead}}
+\author{Nova Spivack\\
+\url{https://www.novaspivack.com}}
+\date{2026}
+
+\begin{document}
+\maketitle
+\NovaZenodoAfterTitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+\noindent
+We show that the question whether physical reality is discrete or continuous, on its two principal readings (finite vs.\ infinite information density; computable vs.\ non-computable dynamics), cannot be decided by any finite-resource observer internal to the system. Two independent barriers are proved and machine-checked in Lean~4: a \emph{topological} barrier --- substrate discreteness is not a finitely determined (clopen) property of observable transcripts, so no finite body of evidence decides it (\leanref{Substrate.substrate\_not\_finitely\_determined}) --- and a \emph{recursion-theoretic} barrier --- no candidate law, even when supplied, can be internally certified as the law, by reduction to the halting problem (\leanref{Substrate.law\_match\_undecidable}). Under Perfect Self-Containment (PSC) these results make substrate discreteness an \emph{outsourced} property (\leanref{Substrate.substrate\_not\_internally\_decidable}), for which the only admissible adjudicator --- by a uniqueness argument this paper cites from the companion NEMS programme rather than re-derives --- is minimum-description-length (MDL) selection over complete law-sets, which selects the finite-\emph{description} class: computable transcripts together with an adjudicative extension (``glimmer'') that resolves an apparent tension with the programme's own account of physical randomness, since the purely computable class alone would contradict its determinism no-go result. We explain why Planck-scale grid searches are structurally unable to settle the question, identify asymptotic scaling exponents as the only finite observables carrying substrate information, and state the results' limits: the glimmer extension's classification is fully machine-checked; only the physical premise underlying it (that the actual Born measure constitutes complete internal semantics) and the question of which substrate actually obtains are left, honestly, open.
+
+\NovaZenodoInAbstract
+\end{abstract}
+
+\noindent\textbf{Keywords:} substrate discreteness, computability, Baire space topology, halting problem, minimum description length, causal sets, holographic bound, Lean~4
+
+\noindent\textbf{MSC 2020:} 03D25, 03D80, 54A05, 68Q17
+
+\noindent\textbf{Code/Data availability:} \texttt{substrate-undecidability-lean} Lean~4 library (Mathlib only); \texttt{lake build}; repository README and module index at repository root give the full axiom audit.
+
+% ============================================================================
+% 1. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+``Is the universe discrete or continuous?'' sounds like one question with a definite, if
+currently unknown, answer. It is not. It is at least three questions, and they are usually
+run together:
+
+\begin{itemize}[leftmargin=1.6em]
+\item[\textbf{(A)}] \textbf{Information density.} Does a bounded region of space admit only
+finitely many distinguishable states, or infinitely many?
+\item[\textbf{(B)}] \textbf{Dynamics.} Is the time-evolution law computable (Church--Turing),
+or does it access non-computable structure (hypercomputation)?
+\item[\textbf{(C)}] \textbf{Chance.} Is the outcome of a measurement determined, or is there
+objective randomness?
+\end{itemize}
+
+This paper's central claim is that neither reading of the question admits an internal answer:
+no observer that is itself part of the physical system it is trying to characterize, and that
+has only finite computational resources, can decide axis~(A) or axis~(B) --- not from evidence,
+and not even if handed a candidate law outright. Both halves of that claim are proved and
+machine-checked in Lean~4 against Mathlib below (\cref{sec:parti}), using nothing beyond
+ordinary topology and computability theory.
+
+A further question then arises: once no law can be internally certified, is some class of laws
+nonetheless the one an internal observer should treat as evidentially favored? Answering that
+second question needs one more ingredient the first does not --- \emph{Perfect
+Self-Containment} (PSC), the standing closure assumption of the broader NEMS research programme
+this paper draws on. PSC is not yet common vocabulary outside that programme, and the second
+half of this paper's argument (Part~II, \cref{sec:mdl}) is built directly on it, so before going
+any further we ground PSC carefully for a physics audience; that grounding is the rest of this
+section.
+
+\subsection{Perfect Self-Containment, for physicists}
+\label{sec:psc}
+
+Throughout, \emph{Perfect Self-Containment} (PSC) is a criterion on theories, not a hypothesis
+about the cosmos. A theory satisfies PSC when its predictions are fixed by its own structure: it
+needs no measure it does not supply, no vacuum selector, no external observer map, and no free
+completion data to say which of its observationally inequivalent realizations is actual. The
+NEMS programme proves a trichotomy --- any candidate fundamental theory is record-level
+categorical, internally selecting, or not fundamental --- and a reduction showing that every
+``outside dependency'' is a selection in disguise \citep{SpivackP01,SpivackP83}. Physicists
+already enforce this condition without naming it: the measure problem of eternal inflation is a
+problem because the measure is an external chooser \citep{Guth2007,Freivogel2011}; Wheeler's
+``law without law,'' Einstein's Machian objection to absolute space (something that acts but is
+not acted upon), Everett's universal wavefunction, the no-boundary proposal, and relational
+quantum mechanics all exist to remove an unexplained external ingredient
+\citep{Wheeler1983,Einstein1916,Everett1957,HartleHawking1983,Rovelli1996}; and the demand for no
+free parameters is PSC applied to constants, with minimum-description-length selection
+\citep{Rissanen1978,Solomonoff1964} as its formal version --- the same adjudication principle
+this paper cites for Theorem~5 (\cref{sec:mdl}). PSC is the closure condition of which these are
+instances.
+
+Its logical status is that of an axiom, and necessarily so: a theory that derived its own
+closure from a prior principle would make that principle the external selector it had just
+excluded, in the same way that no consistent system certifies its own consistency
+\citep{SpivackP30}. What PSC has instead is a self-consistency argument that most axioms lack.
+To deny PSC is to assert an external selector \(S\). Either \(S\) is explained, in which case it
+belongs to the theory and the theory is internally selecting --- PSC holds; or \(S\) is
+unexplained, in which case the theory is not foundational \citep{SpivackP83}; and any further
+theory that explains \(S\) faces the same dichotomy, so the regress terminates only at an
+internally selecting stage \citep{SpivackP18,SpivackP23}. The denial of PSC thus posits exactly
+what it declares cannot be posited. The programme's companion note on the PSC--Born fixed point
+states precisely what is proved and what is assumed \citep{SpivackOnRamp}; the strongest
+existence evidence is the machine-checked equivalence between PSC and the Born rule as complete
+internal semantics \citep{SpivackP13,SpivackP14}, which is a fixed point rather than a
+derivation from nothing. Nothing in Part~I of this paper (\cref{sec:parti}) depends on PSC;
+Part~II (\cref{sec:mdl}) does, and \cref{sec:mdl} flags exactly where.
+
+A closely related but genuinely distinct question is often folded into axis~(B) in informal
+discussion: whether physical dynamics can solve computationally hard problems
+\emph{efficiently} --- whether nature's time-evolution lands outside a complexity class such as
+\(\mathsf{P}\) or \(\mathsf{BQP}\) using only polynomial physical resources. Call this
+\textbf{axis (B\('\)): efficient computability}, the complexity class of physical dynamics.
+Axis~(B\('\)) is \emph{not} axis~(B): a polynomial-time solver for an \(\mathsf{NP}\)-hard
+problem is still a \emph{computable} process --- \(\mathsf{P}\) and \(\mathsf{NP}\) both sit
+inside the decidable class --- so evidence bearing on axis~(B\('\)), efficiency, says nothing
+about whether dynamics is computable at all, and in particular no such evidence lands anything
+in \(\mathtt{Cstrict}\) (\cref{sec:model}), which requires genuine non-computability, not mere
+intractability. The theorems below address axis~(B) only; axis~(B\('\)) is a
+complexity-theoretic question tied to the efficient/extended Church--Turing thesis, entirely
+outside their scope. We flag every place below where evidence properly belongs to
+axis~(B\('\)) rather than axis~(B), since the two are conflated often enough in the literature
+that keeping them apart requires active bookkeeping, not just a definition stated once.
+
+This paper proves, and machine-checks in Lean~4 against Mathlib, that axes (A) and (B) ---
+taken together as ``is the substrate discrete or continuum'' --- cannot be decided by any
+observer that is itself part of the system being observed and that has only finite
+resources. This holds in two independent, mutually reinforcing ways. First, no finite body of
+observed data can decide it: substrate discreteness is not a \emph{finitely determined}
+property of what an observer sees, in the precise sense that no prefix of observations,
+however long, settles it (\cref{thm:notfindet}). Second, even supplying the observer with a
+complete candidate law does not help: no internal, finite-resource procedure can certify that
+the law is the correct one, on pain of deciding the halting problem (\cref{thm:lawbarrier}).
+Axis (C) is orthogonal to (A) and (B); it is addressed directly by the glimmer corollary
+(\cref{sec:glimmer}), whose classification is machine-checked, leaving only the Born-martingale
+physical premise open (\cref{sec:open}).
+
+The two barriers are of different character, and keeping them apart is one of the paper's
+main points. The first --- call it the \emph{evidential} barrier --- is purely topological: it
+is a statement about density in Baire space ($\N \to \N$ with the product topology) and does
+not use computability at all; consequently no oracle, at any level of the arithmetical
+hierarchy, changes a density or cardinality fact about Baire space, and nothing escapes this
+barrier in the oracle sense at all. The second --- the \emph{law-based} barrier --- is
+recursion-theoretic: it is a diagonal argument by reduction from the halting problem, and it
+depends essentially on the observer being computable. Exactly how much extra computational
+power defeats it is more subtle than ``any halting oracle'': \(\mathrm{LawMatches}(f,e)\) ---
+``\(e\) matches \(f\) at every time step'' --- is a \(\Pi^0_2\) statement (a universal claim,
+over every \(t\), that \(e\) halts on input \(t\) \emph{and} agrees with \(f(t)\)), and
+\(\mathrm{LawMatches}\) is in fact \(\Pi^0_2\)-\emph{complete}: the reduction proving
+\cref{thm:lawbarrier} gives co-halting-hardness, and a second, independent reduction
+(\leanref{Substrate.law\_match\_pi2\_hard}) many-one reduces the totality problem
+\(\mathrm{Tot}\) to it, which --- since \(\mathrm{Tot}\) is \(\Pi^0_2\)-complete, a standard
+recursion-theoretic fact --- pins its complexity exactly at the \(\Pi^0_2\) level, strictly
+above the co-halting lower bound alone. This makes the oracle-escape analysis exact rather than
+one-sided: a \(\mathbf{0}''\) oracle (deciding the halting problem relative to \(\mathbf{0}'\),
+sufficient for any \(\Pi^0_2\) statement) escapes \cref{thm:lawbarrier}; a plain halting
+(\(\mathbf{0}'\)) oracle provably does \emph{not}, since no \(\Pi^0_2\)-complete problem is
+decidable relative to \(\mathbf{0}'\). This separation (\cref{sec:whatnot}, item~5) is, as far
+as we are aware, not previously stated in this form, and it matters because the two barriers
+rule out the two different escape routes one might otherwise propose: ``just collect more
+data'' fails against \cref{thm:notfindet}; ``but suppose the true law were simply handed to
+us'' fails against \cref{thm:lawbarrier}.
+
+Why does this matter, beyond formal tidiness? Because the standard empirical strategy for
+probing substrate structure --- look for a discreteness artifact at some very small scale,
+e.g.\ Lorentz-violating dispersion at the Planck length --- is not merely difficult. It is
+attacking a question of the wrong shape. \cref{thm:notfindet} says that \emph{no} finite
+experiment, run at any scale, with any precision, can settle discreteness in general; and the
+causal-set programme (\cref{sec:history}) demonstrates concretely, for one specific
+discretization scheme, that a lattice can be built with no preferred-frame artifact at all
+\citep{BombelliHensonSorkin2009}. The lesson generalizes beyond that one scheme: grid searches
+test whether a \emph{particular} discretization breaks a \emph{particular} symmetry, not
+whether the substrate is discrete. \cref{sec:scaling} identifies what \emph{can} carry
+substrate information under these barriers: not thresholds, but asymptotic scaling exponents.
+
+Under Perfect Self-Containment (PSC) --- the criterion of \cref{sec:psc} --- the two
+barriers combine into a structural diagnosis: substrate discreteness is an \emph{outsourced}
+property in the sense of the Internality/Outsourcing Schema \citep{SpivackP83}. It cannot be
+decided from inside by evidence or by law-certification, so if it is decided at all, the
+decision procedure must live outside the space of internal tests altogether. \cref{sec:mdl}
+argues, citing rather than re-deriving the uniqueness argument \citep{SpivackP34,SpivackP84},
+that minimum-description-length (MDL) selection over complete law-sets is the unique
+adjudicator consistent with PSC, and that it selects the finite-\emph{description} class ---
+computable transcripts together with the adjudicative extension formalized in \cref{sec:glimmer}
+--- which is the correct epistemic grounding for treating a compressive, finitely-described
+physical theory as evidentially favored without ever claiming it has been \emph{certified}.
+
+\paragraph{What this paper is not.} It is not a digital-physics paper. It does not argue that
+the universe \emph{is} discrete, nor does it side with Zuse, Fredkin, Wolfram, or 't~Hooft
+against a continuum view, nor with the opposite camp. It proves an undecidability result that
+is agnostic about which substrate obtains, and it explains why every position in that debate is
+structurally unprovable from the inside --- a claim that is stronger than, and different in
+kind from, taking a side (\cref{sec:discussion}).
+
+\paragraph{Structure.} \cref{sec:psc} grounds Perfect Self-Containment for a physics audience,
+before it is invoked later in this section and in Part~II. \cref{sec:history} traces the
+intellectual history of this question, from the classical continuum assumption through
+computability theory to the modern empirical programmes, and situates this paper's result
+relative to all of them. \cref{sec:axes} states the three axes and the existing physical
+evidence bearing on each. \cref{sec:model} gives the
+formal model (worlds, transcripts, internal tests, finite determination), matching
+\leanref{Substrate/Basic.lean}. \cref{sec:parti} states and sketches the proofs of the Part~I
+theorems. \cref{sec:whatnot} states carefully what the theorems do \emph{not} say.
+\cref{sec:scaling} locates the only finite observables that carry substrate information.
+\cref{sec:mdl} states Theorem~5 (outsourcing and MDL) and, in \cref{sec:glimmer}, the glimmer
+corollary that settles axis~C's classification. \cref{sec:discussion} is a synthesizing
+discussion. \cref{sec:open} lists the remaining open problems, including the Born-martingale
+lemma for axis~C. \cref{sec:conclusion} concludes. Appendix~\ref{app:lean} lists the Lean
+declarations; Appendix~\ref{app:status} gives the epistemic status table.
+
+% ============================================================================
+% 2. HISTORICAL CONTEXT
+% ============================================================================
+\section{Historical Context: A Question Posed and Re-Posed}
+\label{sec:history}
+
+The discrete/continuum question has been asked in substantially different vocabularies by
+each generation that has taken it up, and the vocabulary shift is not cosmetic --- each new
+formal tool changed what counted as an answer, and, we will argue, each generation's tools
+eventually ran into some version of the same wall this paper formalizes.
+
+\subsection{The continuum default, and its first crack}
+
+Classical mechanics inherited its substrate assumption from geometry rather than from physics:
+space and time were modeled on the real continuum because that was the available mathematics,
+not because the continuum had been empirically established. Newtonian dynamics, and later
+field theory through general relativity, is written on differentiable manifolds with no
+built-in minimum length or minimum state count. For roughly three centuries, ``the universe is
+continuous'' was less a hypothesis than an unexamined modeling default, and the question this
+paper asks --- can an internal observer decide it? --- had no formal handle, because there was
+no rigorous notion yet of what a finite-resource decision procedure even was.
+
+That handle appeared with computability theory in the 1930s (Turing, Church, Kleene), but its
+relevance to physics was not immediate. The connection was made explicit by Robin Gandy, who
+in \citeyear{Gandy1980} asked, in effect, what physical principles a machine's operation must
+satisfy for the Church--Turing thesis to extend from ``mechanisms'' in the abstract to devices
+built from actual matter \citep{Gandy1980}. Gandy's analysis --- bounding the local density of
+information and the propagation speed of causal influence --- was the first serious attempt to
+tie ``how much information can be packed into a bounded physical region'' (our axis~A) to a
+computability claim about physical process (our axis~B). It is a direct ancestor of both
+Bekenstein's later entropy bound and of the present paper's insistence that axes~A and~B, while
+conceptually distinct, are both instances of one underlying phenomenon: an internal observer's
+access to the substrate is mediated entirely by a finite-alphabet readout channel, and every
+question about the substrate is really a question about what can be inferred from that channel.
+
+\subsection{The digital-physics tradition}
+
+Independently of Gandy, and starting earlier, a distinct tradition proposed that physical
+reality is not merely finite-information but literally computational in its substrate. Konrad
+Zuse's 1969 \emph{Rechnender Raum} (``Calculating Space'') \citep{Zuse1969,Zuse1970} is
+usually credited as the founding text: Zuse conjectured that the universe is being computed by
+a discrete, cellular-automaton-like process, decades before ``digital physics'' had a name and
+before Bekenstein or Bousso had given any information-theoretic content to ``finite substrate
+information.'' Edward Fredkin developed this into a research programme in the 1980s,
+proposing that reversible universal cellular automata are the correct microphysical model
+\citep{Fredkin1990}, and Stephen Wolfram's \emph{A New Kind of Science}
+\citep{Wolfram2002} pushed the same idea into a large-scale programme of searching cellular
+automaton rule space for candidates that reproduce known physics. Gerard~'t~Hooft took a
+related but distinct route from a different motivation: dissatisfied with the interpretive
+status of quantum mechanics, he proposed that quantum indeterminism is an emergent, coarse-grained
+description of an underlying deterministic, discrete (cellular-automaton-like) dynamics
+\citep{tHooft1999,tHooft2016} --- so 't~Hooft's discreteness claim is entangled with a
+specific stance on axis~C (determinism) that Zuse, Fredkin, and Wolfram's proposals do not
+require.
+
+These positions share a structure worth naming precisely, because it is exactly the structure
+this paper shows cannot be internally vindicated: each proposes a \emph{specific} discrete law
+or class of discrete laws and treats successfully reproducing observed physics as evidence, or
+even proof, that the substrate literally is of that computational character. \cref{thm:lawbarrier}
+below says that no internal, finite-resource procedure can certify that a candidate law is the
+one generating the observed transcript forever, however well it has matched so far. This is not
+a criticism specific to the digital-physics tradition --- the identical epistemic ceiling applies
+to any continuum theory claiming certification, including general relativity taken at face
+value as a claim about the actual substrate. It is a symmetric barrier, and one purpose of this
+paper's abstraction (worlds, transcripts, tests, defined independent of any particular physical
+theory) is to make that symmetry a theorem rather than an assertion.
+
+\subsection{Complications from the computability side}
+
+The digital-physics tradition's implicit dichotomy --- discrete-and-computable versus
+continuum-and-mysterious --- did not survive contact with two independent developments inside
+computability theory and analysis themselves, both of which this paper's model deliberately
+inherits rather than glosses over.
+
+First, David Deutsch's \citeyear{Deutsch1985} formulation of the \emph{physical} Church--Turing
+principle --- that every finitely realizable physical system can be perfectly simulated by a
+universal computing machine operating by finite means \citep{Deutsch1985} --- was explicitly a
+physical claim, not a mathematical theorem, and Deutsch's own paper already flagged the
+subtlety that a computable law can still support qualitatively new physical concepts (a
+quantum computer efficiently doing things intractable classically) without leaving the
+computable realm. The physical Church--Turing thesis being an empirically contentful claim
+about physical law, rather than a mathematical certainty, is precisely the kind of thing
+\cref{thm:lawbarrier} shows cannot be internally certified.
+
+Second, and more corrosive to the naive dichotomy, Hava Siegelmann's analysis of analog
+recurrent neural networks with real-valued (non-rational) weights showed that such networks
+can, in principle, compute functions no Turing machine can compute, evaluated over unbounded
+time \citep{SiegelmannSontag1994,Siegelmann1999}. This is a genuine, mathematically rigorous
+hypercomputation candidate that lives entirely within continuum mathematics and requires no
+appeal to exotic new physics --- it only requires that some physical quantity actually realize
+an uncomputable real number to unbounded precision. B.~Jack Copeland's philosophical taxonomy
+of hypercomputation \citep{Copeland2002,Copeland2002b} carefully separates several logically
+distinct routes to physical hypercomputation (accelerating Turing machines, infinite-precision
+analog computation, quantum hypercomputation proposals, oracle-consulting machines) that are
+frequently conflated in informal discussion; that taxonomy is one of the reasons this paper
+insists on stating precisely, and separately, what each of its two barriers does and does not
+assume about the observer's computational resources (\cref{sec:whatnot}, item~5).
+
+Third, and most directly relevant to this paper's modeling choice for the continuum class,
+Marian Pour-El and Ian Richards proved that the classical wave equation, with perfectly
+computable initial data, can have a unique solution that is \emph{not} computable
+\citep{PourElRichards1981,PourElRichards1989}. (A regularity caveat Penrose raised
+historically, and any careful referee will too: the non-computable solution arises from
+initial data that is computable but not \(C^1\); with smooth, \(C^1\)-computable data the
+solution \emph{is} computable. This does not affect how the result is used below ---
+\cref{rem:modeling} and \cref{sec:open} only need the existence of \emph{some} non-computable
+member of the computable-analysis-refined continuum class, which the non-\(C^1\) construction
+still supplies.) This result is the single clearest formal
+demonstration that ``continuum substrate'' does not entail ``hypercomputational substrate''
+and, symmetrically, that ``discrete substrate'' is not needed to obtain ``computable
+substrate'' --- computability and cardinality of the state space are logically independent
+axes. It undercuts any easy identification of continuum with dangerous-and-uncomputable or
+discrete with safe-and-tame, and it is exactly why this paper's formal model
+(\cref{sec:model}) defines the discrete/continuum distinction by the cardinality and structure
+of the state space (\leanref{Substrate.DiscreteWorld}, \leanref{Substrate.ContinuumWorld}),
+not by whether the resulting transcript is computable, and why \(\mathtt{Cstrict}\) --- the
+class of continuum transcripts that happen to be non-computable --- is defined as a strict
+subset of the continuum class rather than identified with it. A computable-analysis refinement
+of the continuum class (restricting to Cauchy-modulus-computable reals) would shrink
+\(\mathtt{Cstrict}\); by the Pour--El--Richards result it would not empty it, because their
+non-computable solution already arises from computable initial data under exactly that kind of
+restriction. We return to this in \cref{sec:whatnot}, item~4.
+
+\subsection{The empirical side: how physics actually tried to test axis A}
+
+While the digital-physics tradition and the computability-theoretic complications developed
+largely in parallel, mainstream theoretical physics developed its own, independent answer to
+axis~A --- not by conjecturing a specific discrete mechanism, but by deriving an information
+bound from established physics. Jacob Bekenstein's \citeyear{Bekenstein1981} universal bound
+--- that the entropy-to-energy ratio of any bounded physical system is bounded above by a
+quantity proportional to its radius, \(S \le 2\pi k_B E R / \hbar c\) --- \citep{Bekenstein1981}
+was derived from black-hole thermodynamics and the second law, not from any discreteness
+conjecture, and already gives a positive answer to axis~A for systems of bounded energy: only
+finitely many distinguishable states fit in a bounded region of given energy content. Gerard
+'t~Hooft \citeyear{tHooft1993} and Leonard Susskind \citeyear{Susskind1995} then proposed the
+qualitatively stronger \emph{area} bound --- that the maximum entropy (equivalently,
+information content) of any bounded region is proportional to its \emph{boundary area}, not
+its volume, at roughly one bit per Planck area --- building explicitly on Bekenstein's result
+but going beyond it: the area bound is a claim about geometry itself, not merely a bound tied
+to a system's energy content \citep{tHooft1993,Susskind1995}. Raphael Bousso generalized the
+area bound into a fully covariant form applicable to arbitrary spacetimes and causal structures
+\citep{Bousso1999,Bousso2002}. This is the historically important case of axis~A being
+addressed \emph{without} committing to any particular discretization scheme, computational
+interpretation, or even to the claim that spacetime itself is discrete --- the holographic
+bound constrains information content, not geometry.
+
+The natural next question --- if information density is finite, does spacetime itself have to
+be a discrete lattice, and if so, wouldn't such a lattice show up experimentally as a preferred
+frame (Lorentz violation)? --- is where the causal-set programme becomes historically
+essential. Building on ideas that trace back through Bombelli, Lee, Meyer, and Sorkin's 1987
+proposal that spacetime is fundamentally a discrete partial order (a causal set)
+\citep{Bombelli1987}, Bombelli, Henson, and Sorkin proved in \citeyear{BombelliHensonSorkin2009}
+that a discrete causal set, generated by a Poisson sprinkling process, can be constructed to be
+exactly Lorentz invariant \emph{in distribution} --- no preferred rest frame, no direction
+picked out by the discretization \citep{BombelliHensonSorkin2009}. This is a narrower and more
+precise claim than ``no discreteness artifact whatsoever'': causal sets built this way still
+exhibit their own discreteness signatures (non-locality effects, so-called ``swerves'' in
+particle trajectories), which are themselves Lorentz-invariant rather than absent. The theorem
+rules out a preferred \emph{frame}, not discreteness signatures altogether --- a distinction
+worth stating precisely, because it makes this paper's point sharper rather than weaker: it
+shows discreteness need not manifest as a symmetry violation at all, which is exactly why a
+naive ``look for the grid'' experiment is attacking a question of the wrong shape even before
+\cref{thm:notfindet}'s general obstruction is invoked. This result mattered historically
+because it dissolved what had looked like a knock-down objection to any discrete spacetime
+theory (``a lattice necessarily picks out a preferred frame, we would have seen it by now''),
+and thereby made discrete-spacetime theories respectable candidates again.
+
+We engage this history directly because it is the single clearest historical instance of
+exactly the phenomenon this paper's Theorem~2 (\cref{thm:notfindet}) proves in general. The
+naive Lorentz-violation test is precisely a finitely-determined property attempt: look for a
+specific, bounded-resource observable signature (anisotropic dispersion, a preferred direction)
+that a specific discretization scheme would produce. The causal-set programme's own resolution
+--- construct the discretization to be exactly Lorentz-invariant --- is a demonstration, for
+one concrete scheme, that \emph{that particular} finite test cannot distinguish the discrete
+case from the continuum case. \cref{thm:notfindet} generalizes this from ``this one clever
+scheme evades this one clever test'' to ``no finite-resource test whatsoever, against any
+discretization scheme whatsoever, can settle the question, because the two transcript classes
+are dense into each other in Baire space.'' The causal-set community's Lorentz-invariance
+achievement is therefore best read, in retrospect, as a special-case patch that happens to
+defeat one attack; it was never, and could never have been on its own terms, a general
+resolution of the underlying undecidability, because no finite construction can be a general
+resolution of a statement about the density of two disjoint sets in an infinite product space.
+
+\subsection{Modern empirical programmes on axis B\texorpdfstring{\('\)}{'}, not axis B}
+
+Parallel to the causal-set programme's engagement with axis~A, two modern lines of work have
+tried to test whether physical dynamics can defeat known complexity-class bounds --- axis~B\('\)
+as introduced in \cref{sec:intro}, not axis~B itself, since neither line of work bears on
+whether dynamics is \emph{computable} at all, only on how \emph{efficiently} computable it is.
+Scott Aaronson's ``NP-complete problems and physical reality'' \citep{Aaronson2005} surveys and
+evaluates every serious proposal (from relativistic time dilation near a black hole to exotic
+quantum-gravitational effects) for physically solving NP-hard problems in polynomial time,
+concluding that none survives scrutiny and proposing, in effect, that nature's apparent refusal
+to solve NP-hard problems efficiently is itself a physical principle worth taking as seriously
+as the second law of thermodynamics. Seth Lloyd's estimates of the computational capacity of
+the observable universe \citep{Lloyd2002,Lloyd2006} --- bounding the number of elementary
+logical operations and bits the universe could have performed over its history, using the same
+Bekenstein-type bounds --- are the natural quantitative complement: they do not test
+hypercomputation (axis~B) at all, but put a number on how much classical computation ``fits,''
+which is the natural backdrop against which any claimed axis-B\('\) anomaly (a physical process
+solving something outside \(\mathsf{BQP}\) with polynomial resources) would have to be
+evaluated. Both of these are external-literature results about axis~B\('\); the programme's own
+internal result on axis~B \emph{itself} --- not B\('\) --- is NEMS Paper~35, ``Oracles as
+External Selectors,'' which proves a hypercomputation-exclusion taxonomy (no admissible
+internal procedure consults an oracle) directly from the Internality/Outsourcing Schema
+\citep{SpivackP35}; \cref{thm:certifier} below complements it with a Lean-checked,
+model-theoretic certifier-silence result reached independently and by a different route.
+
+Both Aaronson's and Lloyd's results are, in our terminology, attempts to test axis~B\('\) empirically by looking for a
+single dramatic counterexample or bound violation; neither bears on axis~B as this paper defines
+it, since a fast NP-hard solver is still a computable process. \cref{thm:certifier} below
+(Theorem~3, sound certifier never fires) is nonetheless the right formal lens for how such a
+result should be interpreted even if it were found, on its own complexity-theoretic terms: by
+the same prefix-density argument (\cref{thm:prefix}) that proves \cref{thm:certifier} for the
+discrete/continuum case, any finite observed prefix of ``evidence for the violation'' is equally
+consistent with an ordinary, bound-respecting computable continuation, so no internal test built
+from that finite prefix could be sound and ever fire on this kind of claim either --- the formal
+reason a single demonstration is never internally certifiable, not the informal worry that it
+might be a resource-hiding artifact. Only the \emph{scaling} of physical resource against
+instance size, across a family of instances, can be reported as evidence --- never certified as
+proof. This is why \cref{sec:scaling} treats scaling exponents, not individual demonstrations,
+as the correct unit of empirical content for axis~B\('\), continuing the same methodological
+lesson the causal-set programme taught for axis~A.
+
+\subsection{Where this paper sits}
+
+Every result surveyed above is either (i) a specific mechanism proposal (digital physics), (ii)
+a specific complication showing the discrete/continuum dichotomy does not cleanly track
+computability (Deutsch, Siegelmann, Pour-El--Richards), (iii) a specific information bound
+derived from established physics (Bekenstein, Bousso), or (iv) a specific empirical test or
+estimate (causal sets' Lorentz invariance, Aaronson's survey, Lloyd's estimates). This paper is
+none of these. It does not propose a mechanism, does not derive a new physical bound, and does
+not run or evaluate an empirical test. It proves, for an observer defined abstractly enough to
+cover every mechanism proposal and every empirical test above as a special case, that the
+entire \emph{class} of such tests --- not any one of them, all of them, uniformly --- cannot
+settle the question. That is a claim about the logical structure of the problem, not a new
+entrant into the substantive debate about which substrate is correct, and it is the reason the
+paper is agnostic between Zuse/Fredkin/Wolfram/'t~Hooft on one side and an unrestricted
+continuum view on the other: both sides are making a claim this paper proves can never be
+internally certified, regardless of which of them happens to be true.
+
+% ============================================================================
+% 3. THE THREE AXES AND PRIOR EVIDENCE
+% ============================================================================
+\section{The Three Axes and Prior Evidence}
+\label{sec:axes}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.9cm}>{\raggedright\arraybackslash}p{3.5cm}@{}}
+\toprule
+\textbf{Axis} & \textbf{Discrete pole} & \textbf{Continuum pole} & \textbf{Existing evidence} & \textbf{Attack surface} \\
+\midrule
+A. Information density & Finite states per bounded region & Infinitely many distinguishable states & Bekenstein's energy bound + 't~Hooft\slash Susskind\slash Bousso's holographic area bound \(\Rightarrow\) finite \citep{Bekenstein1981,tHooft1993,Susskind1995,Bousso1999,Bousso2002} & Exactness of the bound; metrological scaling \\
+B. Dynamics & Computable (Church--Turing) & Non-computable / hypercomputation accessible & Siegelmann's analog RNN construction shows hypercomputation is mathematically consistent \citep{SiegelmannSontag1994,Siegelmann1999}; no confirmed physical instance & \cref{thm:lawbarrier}: no internal law-certification, whether the candidate law is computable or not \\
+B\('\). Efficient computability \emph{(subsidiary to B --- complexity, not computability; see \cref{sec:intro})} & \(\mathsf{P}\)/\(\mathsf{BQP}\)-computable with polynomial resources & \(\mathsf{NP}\)-hard (or harder) solved with polynomial resources & Aaronson: nature refuses \(\mathsf{NP}\)-hard in poly time \citep{Aaronson2005}; Lloyd's computational-capacity bounds \citep{Lloyd2002,Lloyd2006} & Complexity class of physical computation --- outside the Lean theorems below, which address computability, not efficiency \\
+C. Chance & Deterministic & Objective randomness & Bell's theorem, assuming no superdeterminism \citep{Bell1964}; Hossenfelder--Palmer's case for taking superdeterminism seriously is the standing challenge to that assumption, not support for it \citep{HossenfelderPalmer2020} & Interacts with B via the ``glimmer'' programme (\(\Omega\)-like traces at degree \(\mathbf{0}'\)); \cref{sec:open} \\
+\bottomrule
+\end{tabular}
+\caption{The axes conflated by ``is the universe discrete or continuous.'' This paper's Part~I theorems (\cref{sec:parti}) show axes A and B, \emph{taken together} as the discrete-versus-strict-continuum distinction (\cref{sec:model}), are internally undecidable; \cref{rem:axisA} gives a separate, axis-A-specific dense pair (\(\mathtt{Dfin}\), eventually periodic sequences) to which the same mechanism applies directly, machine-checked (\cref{rem:axisA}). Axis B\('\) is a distinct, complexity-theoretic question (efficiency, not computability) that the theorems do not address and that is listed here only to correctly separate it from axis B's existing evidence. Axis C is orthogonal and is addressed by the glimmer corollary (\cref{sec:glimmer}): its definitions and separations are machine-checked, with one bridge lemma (the Born-martingale completeness premise) disclosed as open.}
+\label{tab:axes}
+\end{table}
+
+Axes~A and~B are exactly the two the theorems below show to be internally undecidable; axis~C
+is genuinely different in kind and is addressed only by the glimmer corollary
+(\cref{sec:glimmer}), whose definitions and separations are machine-checked but whose one
+remaining bridge lemma is disclosed as open, not folded in as an established result. Axis~B\('\)
+(\cref{tab:axes}) is also not addressed: it is a complexity-theoretic question about efficiency,
+not a computability question, and lies outside what \cref{thm:lawbarrier} or any other theorem
+below speaks to. The Bombelli--Henson--Sorkin causal-set result
+\citep{BombelliHensonSorkin2009} is the standing witness that discreteness on axis~A leaves no
+Lorentz-violating grid artifact, so the traditional Planck-scale experimental programme tests a
+particular scheme's symmetry properties, not substrate as such (\cref{sec:history}).
+
+\begin{remark}[Axis A is not literally \(\D\), and has its own dense pair]
+\label{rem:axisA}
+\(\D\) as defined (\cref{def:classes}) is an axis-B class --- computability of transcript --- not
+literally axis~A's ``finite states per bounded region.'' A finite-state world with a
+non-computable transition rule has finite information density (axis A) but a non-computable
+transcript, and a continuum world with a computable rule has the reverse; \(\D\) tracks neither
+in isolation. To make the abstract's claim to cover ``both principal readings'' fully formal
+rather than only evidentially motivated (\cref{tab:axes}, row A), axis~A gets its own dense pair
+and its own instance of \cref{thm:notfindet}: let \(\mathtt{Dfin} := \{f \mid \exists\, w
+\text{ finite-state},\ w.\mathrm{transcriptFn} = f\}\) be the transcripts of worlds with finite
+state type. \(\mathtt{Dfin}\) coincides exactly with the eventually periodic sequences
+(\leanref{Substrate.Dfin\_iff\_eventuallyPeriodic}) --- a pigeonhole argument on the finitely many
+reachable states forces eventual periodicity, and conversely every eventually periodic sequence
+is realized by a finite-state world built from its pre-period and period. \(\mathtt{Dfin}\) is
+dense (\leanref{Substrate.Dfin\_dense}), its complement is dense (\leanref{Substrate.Dfin\_compl\_dense}),
+and the two are disjoint by construction, so the abstract dense-pair form of Theorem~2
+(\leanref{Substrate.not\_finitely\_determined\_of\_dense\_pair}, module \leanref{Substrate/NotFinDet.lean})
+applies verbatim to this different pair:
+\[
+  \neg\, \exists\, P,\ \mathrm{FinitelyDetermined}(P) \,\wedge\, (\forall f \in \mathtt{Dfin},\
+  P(f)) \,\wedge\, (\forall f \in \mathtt{Dfin}^c,\ \neg P(f))
+\]
+(\leanref{Substrate.axisA\_not\_finitely\_determined}, module \leanref{Substrate/AxisA.lean}).
+Axis~A is therefore internally undecidable in its own right, by the identical topological
+mechanism as axes A and B taken together, and not merely by inheritance from axis~B's \(\D\).
+
+\smallskip\noindent\emph{Lean status:} \leanref{Substrate/AxisA.lean} is machine-checked
+--- status \A. It is part of this repository's green \leanref{Substrate.lean} import (\texttt{lake
+build}: 8262/8262 jobs, zero errors, zero \texttt{sorry}), and every theorem named above is
+confirmed by direct \texttt{\#print axioms} to depend on at most the three standard Mathlib
+axioms (\texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}); see
+Appendix~\ref{app:lean} for the full declaration table.
+\end{remark}
+
+\FloatBarrier
+
+% ============================================================================
+% 4. FORMAL MODEL
+% ============================================================================
+\section{Formal Model}
+\label{sec:model}
+
+The formal development (Lean module \leanref{Substrate/Basic.lean}) fixes an abstraction of
+``physical system with an internal observer'' deliberately thin enough to cover every substrate
+proposal in \cref{sec:history} as a special case, and precise enough to support theorems.
+
+\subsection{Worlds and transcripts}
+
+\begin{definition}[World]
+\label{def:world}
+A \emph{world} (\leanref{Substrate.World}) is a record consisting of a state type \(S\), an
+initial state \(\mathrm{init} : S\), a deterministic step function \(\mathrm{step} : S \to S\),
+and a finite-alphabet observer readout \(\mathrm{read} : S \to \N\).
+\end{definition}
+
+The readout is where ``internal observer'' enters formally, and it is the single most important
+modeling choice in the paper. Whatever the substrate actually is --- finite state machine,
+continuum field configuration, or anything else --- the observer receives only a stream of
+natural numbers, one symbol per time step. Everything an internal observer can possibly know
+about the substrate factors through this stream.
+
+\begin{definition}[Transcript]
+\label{def:transcript}
+The \emph{transcript} of a world \(w\) (\leanref{Substrate.World.transcript},
+\leanref{Substrate.World.transcriptFn}) is the function \(\N \to \N\) given by
+\[
+  w.\mathrm{transcript}(t) \;=\; w.\mathrm{read}\bigl(w.\mathrm{step}^{[t]}(w.\mathrm{init})\bigr).
+\]
+\end{definition}
+
+The transcript is the \emph{only} thing the observer ever sees; every downstream statement in
+this paper is a statement about elements of Baire space \(\N \to \N\).
+
+\subsection{Two substrate classes, defined by what they can produce}
+
+Substrate classes are defined by the transcripts they can produce, not by the state type
+directly --- this is what makes the indistinguishability theorems (\cref{sec:parti}) clean, and
+it is a deliberate anti-smuggling choice: a definition of ``discrete'' phrased in terms of the
+state type alone would risk building the conclusion into the premise.
+
+\begin{definition}[Discrete and continuum worlds]
+\label{def:classes}
+A world \(w\) is \emph{discrete} (\leanref{Substrate.DiscreteWorld}) if its state type admits a
+\texttt{Primcodable} structure and both \(\mathrm{step}\) and \(\mathrm{read}\) are
+\texttt{Computable}. A world \(w\) is a \emph{continuum} world
+(\leanref{Substrate.ContinuumWorld}) if its state type is isomorphic to \(\mathrm{Fin}\,n \to
+\R\) for some \(n\), with \emph{arbitrary} (unrestricted classical) dynamics.
+\[
+  \D := \{f \mid \exists\, w \text{ discrete},\ w.\mathrm{transcriptFn} = f\}
+  \qquad
+  \mathtt{C} := \{f \mid \exists\, w \text{ continuum},\ w.\mathrm{transcriptFn} = f\}
+\]
+\[
+  \mathtt{Cstrict} := \mathtt{C} \setminus \{f \mid \mathrm{Computable}\ f\}
+\]
+(\leanref{Substrate.D}, \leanref{Substrate.C}, \leanref{Substrate.Cstrict}.)
+\end{definition}
+
+\begin{remark}[Modeling honesty]
+\label{rem:modeling}
+\(\mathtt{ContinuumWorld}\) places no computability restriction whatsoever on \(\mathrm{step}\);
+consequently \(\mathtt{C}\) turns out to be \emph{all} of Baire space
+(\leanref{Substrate.mem\_C}, \cref{sec:parti}): an unrestricted continuum with arbitrary
+classical dynamics can realize any readout stream. This is a deliberate and disclosed modeling
+choice, not an oversight --- it reflects the historical fact (\cref{sec:history}) that
+``continuum'' as classically conceived carries no built-in computability restriction, and it is
+exactly why the interesting content of the continuum class lives in \(\mathtt{Cstrict}\), the
+sub-class that is \emph{also} non-computable. A computable-analysis refinement of
+\(\mathtt{ContinuumWorld}\) --- restricting \(\mathrm{step}\) to act by Cauchy-modulus-computable
+maps on Cauchy-modulus-computable reals --- would shrink \(\mathtt{Cstrict}\), but by
+Pour-El--Richards \citep{PourElRichards1981} would not empty it, since their non-computable
+wave-equation solution already arises from computable initial data under exactly that kind of
+restriction. Mathlib does not currently provide computable analysis, so this refinement is left
+for future work (\cref{sec:open}); the theorems below do not depend on it.
+\end{remark}
+
+\subsection{Internal tests and finite determination}
+
+\begin{definition}[Prefix, internal test]
+\label{def:test}
+For \(f : \N \to \N\) and \(n \in \N\), \(\mathrm{Prefix}(f,n)\) (\leanref{Substrate.Prefix}) is
+the list of the first \(n\) values of \(f\). An \emph{internal test}
+(\leanref{Substrate.InternalTest}) is a pair of a budget \(n \in \N\) and a computable verdict
+function \(\mathrm{verdict} : \mathrm{List}\,\N \to \mathrm{Bool}\); it runs
+(\leanref{Substrate.InternalTest.run}) as \(T.\mathrm{run}(f) := T.\mathrm{verdict}(\mathrm{Prefix}(f,
+T.\mathrm{budget}))\).
+\end{definition}
+
+\begin{definition}[Finitely determined]
+\label{def:findet}
+A property \(P\) of transcripts is \emph{finitely determined}
+(\leanref{Substrate.FinitelyDetermined}) if some prefix length \(n\) settles it for every pair
+of transcripts agreeing on that prefix:
+\[
+  \exists\, n,\ \forall f\,g,\ \mathrm{Prefix}(f,n) = \mathrm{Prefix}(g,n) \Rightarrow (P(f) \leftrightarrow P(g)).
+\]
+Equivalently, \(P\) is clopen in the product topology on \(\N \to \N\).
+\end{definition}
+
+An internal test decides a property exactly when the property is internally decidable
+(\cref{sec:mdl}, \leanref{Substrate.InternallyDecidable}); every internally decidable property
+is finitely determined (\leanref{Substrate.internally\_decidable\_implies\_finitely\_determined}),
+since a test only ever inspects a bounded-length prefix.
+
+% ============================================================================
+% 5. THEOREMS, PART I
+% ============================================================================
+\section{Theorems, Part I: The Two Barriers}
+\label{sec:parti}
+
+All results in this section are proved and machine-checked (status \A) in the Lean module
+family \leanref{Substrate/}, against Mathlib only.
+
+\begin{lemma}[Transcript characterisation of \(\D\)]
+\label{lem:transcript-char}
+\(f \in \D \iff \mathrm{Computable}\ f\).
+{\raggedright\emph{(\leanref{Substrate.transcript\_characterisation}, module \leanref{Substrate/Discrete.lean}.)}\par}
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+(\(\Rightarrow\)) If \(w\) is discrete, iterating a computable \(\mathrm{step}\) from a
+computable state is computable (\leanref{Substrate.World.iterate\_computable}, via
+\texttt{Computable.nat\_rec}), and composing with computable \(\mathrm{read}\) shows the
+transcript is computable (\leanref{Substrate.World.transcript\_computable\_of\_discrete}).
+(\(\Leftarrow\)) Given computable \(f\), take \(S := \N\), \(\mathrm{step} :=
+\mathrm{succ}\), \(\mathrm{init} := 0\), \(\mathrm{read} := f\); this world is discrete by
+construction and its transcript is \(f\) by \(\mathrm{succ}^{[t]}(0) = t\).
+\end{proof}
+
+\begin{lemma}[Embedding]
+\label{lem:embedding}
+Every discrete world's transcript is realized by \emph{some} continuum world; hence \(\D
+\subseteq \mathtt{C}\). \emph{(\leanref{Substrate.discrete\_subset\_continuum}, module
+\leanref{Substrate/Embed.lean}.)}
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+This is the immediate specialisation of the stronger fact, proved directly, that \emph{every}
+\(f : \N \to \N\) whatsoever lies in \(\mathtt{C}\) (\leanref{Substrate.mem\_C}): since \(\N \to
+\N\) and \(\R\) have the same cardinality (\texttt{Cardinal.mk} agreement, via
+\(\aleph_0^{\aleph_0} = \mathfrak{c}\)), \texttt{Mathlib}'s \texttt{Cardinal.eq} converts that
+cardinality equality into a \emph{classical}, non-constructive equivalence \((\N \to \N) \simeq
+(\mathrm{Fin}\,1 \to \R)\) --- this step is where \texttt{Classical.choice} (and, via
+\texttt{Cardinal.mk}'s quotient construction, \texttt{Quot.sound}) does genuine work in this
+proof, not merely disclosed bookkeeping: no \emph{explicit}, computable equivalence between the
+two types is exhibited or exhibitable by this argument. Given that equivalence, take the
+continuum world's state type to be \(\N \to \N\) itself, \(\mathrm{init} := f\),
+\(\mathrm{step}\) the left-shift, and \(\mathrm{read}\) the head symbol; its transcript is
+exactly \(f\).
+\end{proof}
+
+\begin{theorem}[Prefix Indistinguishability]
+\label{thm:prefix}
+For every finite list \(p\), there exist \(d \in \D\) and \(c \in \mathtt{Cstrict}\), both
+extending \(p\) as a prefix: \(d\) is \(p\) followed by zeros (computable), and \(c\) is
+\(p\) followed by a fixed non-computable tail built from the halting problem. \emph{(\leanref{Substrate.prefix\_indistinguishable},
+module \leanref{Substrate/Prefix.lean}.)}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The discrete witness is the zero-extension of \(p\), computable by construction
+(\leanref{Substrate.prefix\_getD\_eq}). The strict-continuum witness agrees with \(p\) on the
+prefix and then continues with a fixed function \(\mathrm{haltingIndicator} : \N \to \N\)
+(\leanref{Substrate.haltingIndicator}), defined as the (classically well-defined, non-effective)
+indicator of whether a code halts on input \(0\); this function is provably not computable
+(\leanref{Substrate.not\_computable\_haltingIndicator}), by reduction from
+\texttt{ComputablePred.halting\_problem}, and this non-computability transfers to the
+prefix-extended witness. By \cref{lem:embedding} the witness also lies in \(\mathtt{C}\), hence
+in \(\mathtt{Cstrict}\).
+\end{proof}
+
+\begin{corollary}
+\label{cor:disjoint-dense}
+\(\D\) and \(\mathtt{Cstrict}\) are disjoint (\leanref{Substrate.D\_disjoint\_Cstrict}, an
+immediate consequence of \cref{lem:transcript-char}) and both dense in Baire space (immediate
+from \cref{thm:prefix}, since every finite prefix extends into both classes).
+\end{corollary}
+
+\begin{theorem}[Substrate is not finitely determined]
+\label{thm:notfindet}
+No finitely determined property of transcripts holds on all of \(\D\) and fails on all of
+\(\mathtt{Cstrict}\):
+\[
+  \neg\, \exists\, P,\ \mathrm{FinitelyDetermined}(P) \,\wedge\, (\forall f \in \D,\ P(f))
+  \,\wedge\, (\forall f \in \mathtt{Cstrict},\ \neg P(f)).
+\]
+{\raggedright\emph{(\leanref{Substrate.substrate\_not\_finitely\_determined}, module \leanref{Substrate/NotFinDet.lean}.)}\par}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Immediate from \cref{thm:prefix}: if \(P\) were settled by prefix length \(n\), apply
+\cref{thm:prefix} to the all-zero prefix of length \(n\) to get \(d \in \D\) and \(c \in
+\mathtt{Cstrict}\) agreeing on that prefix; then \(P(d) \leftrightarrow P(c)\) contradicts \(P(d)\)
+true and \(P(c)\) false.
+\end{proof}
+
+\begin{keybox}[title={This is the headline result --- and it does not need the halting problem}]
+Theorem~2 is pure topological density in Baire space. Its proof invokes \cref{thm:prefix},
+whose \(\mathtt{Cstrict}\) witness happens to be built from a halting-problem construction, but
+nothing about Theorem~2 \emph{itself} depends on recursion theory: any two dense, disjoint
+subsets of \(\N \to \N\) would give the same conclusion. This is a Lean-checked fact, not
+only a proof-sketch observation: the abstract form
+\[
+  (\forall p,\ \exists a \in A,\ \mathrm{Prefix}(a,|p|) = p) \to (\forall p,\ \exists b \in B,\
+  \mathrm{Prefix}(b,|p|) = p) \to \mathrm{Disjoint}\ A\ B \to {}
+\]
+\[
+  \neg\, \exists\, P,\ \mathrm{FinitelyDetermined}(P) \wedge (\forall f \in A,\ P(f)) \wedge
+  (\forall f \in B,\ \neg P(f))
+\]
+is proved directly from prefix combinatorics, with no reference to \texttt{Computable} or
+\texttt{Nat.Partrec} anywhere in its proof term
+(\leanref{Substrate.not\_finitely\_determined\_of\_dense\_pair}, module
+\leanref{Substrate/NotFinDet.lean}; \texttt{\#print axioms} shows only the standard
+\texttt{propext, Classical.choice, Quot.sound}), and \cref{thm:notfindet} itself is derived from
+it by instantiating \(A := \D\), \(B := \mathtt{Cstrict}\) via \cref{thm:prefix}
+(\leanref{Substrate.substrate\_not\_finitely\_determined}). The barrier is topological
+\emph{before} it is recursion-theoretic, and Lean shows this at the level of the proof term,
+not only the theorem statement. This separation is developed further in \cref{sec:whatnot},
+item~5, and is one of the two independent barriers advertised in the abstract.
+\end{keybox}
+
+\begin{theorem}[No sound internal certifier fires]
+\label{thm:certifier}
+Let \(T\) be an internal test.
+\begin{enumerate}[label=(\alph*), leftmargin=1.6em]
+\item If \(T\) is \emph{sound for continuum}
+(\leanref{Substrate.SoundForContinuum}: \(T.\mathrm{run}(f) = \mathrm{true} \Rightarrow f \in
+\mathtt{Cstrict}\)), then \(T\) never returns \(\mathrm{true}\)
+(\leanref{Substrate.sound\_for\_continuum\_never\_fires}).
+\item Symmetrically, if \(T\) is
+\emph{sound for discreteness} (\leanref{Substrate.SoundForDiscreteness}), \(T\) never returns
+\(\mathrm{true}\) (\leanref{Substrate.sound\_for\_discreteness\_never\_fires}).
+\end{enumerate}
+{\raggedright\emph{(Combined: \leanref{Substrate.certifier\_silent\_or\_unsound}, module
+\leanref{Substrate/Certifier.lean}.)}\par}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Both directions apply \cref{thm:prefix} to the prefix that \(T\) actually inspects
+(\(\mathrm{Prefix}(f_0, T.\mathrm{budget})\) for a hypothetical positive verdict \(f_0\)): the
+\(\D\)-witness and the \(\mathtt{Cstrict}\)-witness agreeing with that prefix both trigger the
+same verdict, so soundness for one class forces the (false) claim that the other class's
+witness also lies in the sound class, contradicting \cref{cor:disjoint-dense}.
+\end{proof}
+
+A certifier of either substrate class is therefore either unsound (fires on the wrong class at
+least once) or permanently silent (never fires at all) --- there is no third option. This is the
+model-theoretic counterpart of NEMS Paper~35's programme-internal ``no internal hypercomputer''
+result \citep{SpivackP35} (\cref{sec:history}): Paper~35 argues from the
+Internality/Outsourcing Schema that no admissible internal procedure may consult an oracle, an
+existence claim about hypercomputers; \cref{thm:certifier} complements it with a distinct,
+certifier-silence conclusion for this paper's specific model, by the independent route of
+prefix-density in Baire space.
+
+\begin{theorem}[Law-Certification Barrier]
+\label{thm:lawbarrier}
+Let \(f\) be computable, and let \(\mathrm{LawMatches}(f,e)\) (\leanref{Substrate.LawMatches})
+say that code \(e\) matches \(f\) at every time step: \(\forall t,\ e.\mathrm{eval}(t) =
+\mathrm{Part.some}(f(t))\). Then \(\mathrm{LawMatches}(f, \cdot)\) is not a computable predicate on codes:
+\[
+  \neg\, \mathrm{ComputablePred}\bigl(\lambda\, e.\ \mathrm{LawMatches}(f,e)\bigr).
+\]
+{\raggedright\emph{(\leanref{Substrate.law\_match\_undecidable}, module \leanref{Substrate/LawBarrier.lean}.)}\par}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By reduction from the halting problem, reusing the halting-reduction \emph{pattern} of
+\texttt{nems-lean}'s \texttt{NemS.Diagonal.HaltingReduction} \citep{nemsLean2025} (no code
+dependency; Mathlib only). Given a code \(c\), build a code \(e_c\)
+(\leanref{Substrate.matchFn}, \leanref{Substrate.bigG}) that, on input \(t\), outputs \(f(t)\)
+unless \(c\) has \emph{visibly} halted on input \(0\) within \(t\) steps (checked via the
+step-bounded evaluator \(\mathtt{evaln}\)), in which case it outputs \(f(t) + 1\)
+(\leanref{Substrate.matchFn\_eq\_f\_iff}). Then \(e_c\) matches \(f\) forever if and only if
+\(c\) never halts on \(0\). The assignment \(c \mapsto e_c\) is computable, uniformly, via the
+\(S^m_n\) theorem (\texttt{Nat.Partrec.Code.curry}). If \(\mathrm{LawMatches}(f, \cdot)\) were a
+computable predicate on codes, composing with \(c \mapsto e_c\) would computably decide
+\(\neg\,\mathrm{HaltsOnZero}(c)\) for every \(c\), hence would decide the halting problem,
+contradiction.
+\end{proof}
+
+\setcounter{corollary}{0}
+\begin{corollary}[Bridge to Paper~30]
+\label{cor:p30}
+Specializing \cref{thm:lawbarrier} to the constant transcript \(f \equiv 0\) gives
+\(\neg\,\mathrm{ComputablePred}(\lambda\,e.\ \mathrm{LawMatches}(0,e))\)
+(\leanref{Substrate.law\_match\_undecidable\_zero}). This is the substrate-specific instance of
+the general no-total-self-certifier phenomenon proved by NEMS Paper~30, ``Second Incompleteness
+for Self-Certifying Learners'' \citep{SpivackP30}: no total internal certifier exists under
+diagonal capability. Substrate law-certification is thus a special case of self-certification
+failure, not a new phenomenon.
+\end{corollary}
+
+\begin{keybox}[title={Interpretation: two closures, not one}]
+Theorem~2 says no finite \emph{data} decides substrate. Theorem~4 says no finite \emph{theory}
+can be internally certified either, even when the theory is handed to the observer outright.
+Together they close both the evidential route and the law-based route; the second closure is
+the diagonal barrier proper, and it is the one that genuinely needs computability theory.
+\end{keybox}
+
+\begin{thmfourprime}[\(\Pi^0_2\)-hardness of \(\mathrm{LawMatches}\)]
+\label{thm:lawbarrier-pi2}
+Let \(f\) be computable. The totality problem \(\mathrm{Tot} := \{e \mid \forall t,\
+e.\mathrm{eval}(t)\text{ halts}\}\) many-one reduces to \(\mathrm{LawMatches}(f,\cdot)\):
+\[
+  \mathrm{Tot} \le_m \bigl(\lambda\, e.\ \mathrm{LawMatches}(f,e)\bigr).
+\]
+Since \(\mathrm{Tot}\) is \(\Pi^0_2\)-complete --- a standard recursion-theoretic fact, cited
+here and not proved in this repository --- this pins \(\mathrm{LawMatches}(f,\cdot)\)'s
+complexity exactly at \(\Pi^0_2\)-complete, strictly above the co-halting lower bound Theorem~4
+gives alone. \emph{(\leanref{Substrate.law\_match\_pi2\_hard}, specialized to \(f \equiv 0\) as
+\leanref{Substrate.law\_match\_pi2\_hard\_zero}; module \leanref{Substrate/LawBarrier.lean}.)}
+\end{thmfourprime}
+
+\begin{proof}[Proof sketch]
+Given a code \(e\), build a code \(e'\) that, on input \(t\), first runs \(e\) on that same
+input \(t\) to completion (discarding the result) and then outputs \(f(t)\); this
+sequential-composition construction is computable, uniformly in \(e\). If \(e \in \mathrm{Tot}\)
+(\(e\) halts on every input), \(e'\) reaches its final step on every \(t\) and outputs \(f(t)\)
+there, so \(e'\) matches \(f\) forever; if \(e \notin \mathrm{Tot}\), \(e\) fails to halt on some
+particular input \(t_0\), so \(e'\) never reaches its final step on \(t_0\) and fails to match
+\(f\) there. This gives \(\mathrm{Tot} \le_m \mathrm{LawMatches}(f,\cdot)\) directly,
+independently of Theorem~4's own co-halting reduction.
+\end{proof}
+
+% ============================================================================
+% 6. WHAT THE THEOREMS DO NOT SAY
+% ============================================================================
+\section{What the Theorems Do Not Say}
+\label{sec:whatnot}
+
+This section exists because the results above are easy to overstate, and an easy target for a
+referee who reads past the theorem statements. We state the limits precisely.
+
+\begin{enumerate}[leftmargin=1.8em,itemsep=0.4em]
+\item \textbf{The theorems do not say the universe \emph{is} discrete.} They say the question
+cannot be settled internally, by evidence (\cref{thm:notfindet}) or by law-certification
+(\cref{thm:lawbarrier}), and they identify what \emph{can} adjudicate instead
+(\cref{sec:mdl}).
+
+\item \textbf{The theorems do not fully decide axis~C (randomness).} A discrete deterministic
+world and a continuum world with objective chance can produce statistically identical Bell
+correlations; nothing above distinguishes them. Axis~C is addressed directly by the glimmer
+corollary (\cref{sec:glimmer}): its definitions, its density/separation-from-\(\D\) topology, and
+its own instance of \cref{thm:notfindet} are machine-checked in a companion Lean module
+(\leanref{Substrate/Glimmer.lean}, part of the audited, sorry-free build); the
+finite-description consequence of \cref{thm:mdl-uniqueness} depends on this class existing at
+all, so \cref{sec:glimmer} states it as settled content rather than an open problem. What remains genuinely open,
+independently of that Lean status, is the single \textbf{Born-martingale lemma} --- that the
+actual physical Born measure, as complete internal semantics per NEMS Papers~13/14
+\citep{SpivackP13,SpivackP14}, admits no successful computable martingale on the realized
+transcript, given the non-degeneracy premise of NEMS Paper~12 \citep{SpivackP12} and the degree
+bound of UGP Paper~51 \citep{SpivackUGP51}. We state the dependency chain honestly in
+\cref{sec:glimmer} and do not claim more of the corollary than is actually established: the
+mathematical machinery (the definitions, the separations, and the elementary bet-everything
+martingale fact) is machine-checked; the physical completeness premise connecting it to the
+actual Born measure is not.
+
+\item \textbf{The theorems do not say discreteness is unfalsifiable in every sense.}
+\cref{thm:notfindet} rules out \emph{finitely determined} (clopen) properties, but asymptotic
+properties --- limits over unboundedly long observation, not settled by any fixed prefix
+length --- are not excluded and are in principle limit-testable (\cref{sec:scaling}). The
+theorem locates the only place substrate information can live; it does not eliminate all
+empirical content.
+
+\item \textbf{The continuum class in this v1 development is classical and unrestricted}, so
+\(\mathtt{C}\) is all of Baire space (\cref{rem:modeling}). A computable-analysis refinement
+would shrink \(\mathtt{Cstrict}\), not empty it, by Pour-El--Richards
+\citep{PourElRichards1981,PourElRichards1989}: their non-computable wave-equation solution
+already arises from computable initial data, so even a maximally restrictive computable-analysis
+reading of ``continuum'' still admits non-computable transcripts. The results are robust to
+this refinement; we have not carried it out because Mathlib does not yet provide computable
+analysis (\cref{sec:open}).
+
+\item \textbf{Theorem~2 does not depend on Church--Turing; Theorem~4 does, and the oracle
+strength needed to escape it is pinned down exactly.} \cref{thm:notfindet} is pure density
+in Baire space (the boxed remark after its proof) and would hold verbatim for any two dense,
+disjoint transcript classes, computable or not; no oracle, at any level, changes which prefixes
+exist in \(\D\) and \(\mathtt{Cstrict}\) or the density fact between them, so \cref{thm:notfindet}
+is not escaped by \emph{any} amount of extra computational power. \cref{thm:lawbarrier} is a
+genuine diagonal argument that requires the observer's internal test to be a computable
+predicate --- and the oracle strength that defeats it is exactly \(\mathbf{0}''\), not
+\(\mathbf{0}'\). \(\mathrm{LawMatches}(f,\cdot)\) is a \(\Pi^0_2\) predicate on codes (a
+universal claim, over every time step, that evaluation halts \emph{and} agrees with \(f\)); the
+reduction proving \cref{thm:lawbarrier} gives co-halting-hardness, and a second reduction
+(\leanref{Substrate.law\_match\_pi2\_hard}: the totality problem \(\mathrm{Tot} := \{e \mid
+\forall t,\ e.\mathrm{eval}(t) \text{ halts}\}\) many-one reduces to \(\mathrm{LawMatches}(f,\cdot)\),
+via a code that runs the candidate on each input to completion and discards the result)
+establishes \(\Pi^0_2\)-\emph{hardness} --- strictly above the co-halting lower bound alone,
+and, since \(\mathrm{Tot}\) is \(\Pi^0_2\)-complete (a standard, cited recursion-theoretic fact,
+not proved in this repository), this pins \(\mathrm{LawMatches}(f,\cdot)\)'s complexity exactly
+at \(\Pi^0_2\)-complete. A \(\mathbf{0}''\) oracle (halting relative to \(\mathbf{0}'\),
+sufficient to decide any \(\Pi^0_2\) statement) escapes \cref{thm:lawbarrier}; a plain halting
+(\(\mathbf{0}'\)) oracle provably does \emph{not}, since no \(\Pi^0_2\)-complete problem is
+decidable relative to \(\mathbf{0}'\) --- superseding the earlier, weaker claim that a
+\(\mathbf{0}'\) oracle was merely ``not shown'' to escape. What \emph{is} established, and is
+worth stating explicitly, is that \cref{thm:notfindet} survives strictly more observer upgrades
+than \cref{thm:lawbarrier}: no oracle escapes the former, while exactly \(\mathbf{0}''\)-and-above
+escapes the latter.
+\end{enumerate}
+
+% ============================================================================
+% 7. WHERE SUBSTRATE INFORMATION CAN LIVE: SCALING EXPONENTS
+% ============================================================================
+\section{Where Substrate Information Can Live: Scaling Exponents}
+\label{sec:scaling}
+
+\cref{thm:notfindet} rules out finitely determined (clopen) observables as substrate evidence.
+It does not rule out \emph{asymptotic} observables --- quantities defined as a limit over an
+unboundedly growing resource budget, which by construction are not settled by any fixed prefix
+length. This section classifies the known candidates (status: discussion-level, ``D'' in
+Appendix~\ref{app:status}, not machine-checked) and explains, for each, why it is the correct
+\emph{kind} of empirical target under the barriers proved above.
+
+\paragraph{Metrological scaling.} In an unrestricted continuum, achievable measurement precision
+scales without a floor as the number of resources (e.g.\ repeated trials or entangled probes)
+\(N\) grows --- the Heisenberg \(1/N\) scaling law. Under finite substrate information, this
+scaling exponent must break at some resource level, because there are only finitely many
+distinguishable outcomes to resolve into. The signature is an exponent measured over decades of
+resource scale, not a sharp threshold at any single \(N\) --- which is exactly the form
+\cref{thm:notfindet} allows. This signature is forced by discreteness of \emph{any} kind,
+unlike a Lorentz-violation search, which tests only one specific discretization scheme
+(\cref{sec:history}).
+
+\paragraph{Spectral type and recurrence.} A finite-dimensional Hilbert space forces pure point
+spectrum, exact quasi-periodicity, and a finite Poincar\'e recurrence time; a continuum Hilbert
+space permits continuous spectra and, generically, no finite recurrence time. This is
+observable, in principle, as a recurrence-time scaling law with system size, again an
+asymptotic rather than a threshold signature.
+
+\paragraph{Complexity class of physical computation (axis~B\('\), not axis~B).} Any physical
+process solving a problem outside \(\mathsf{BQP}\) with polynomial physical resources would be
+evidence on axis~B\('\) --- efficient computability (\cref{sec:intro}, \cref{tab:axes}) --- not
+axis~B: such a process remains computable in the ordinary sense, so it says nothing about
+membership in \(\mathtt{Cstrict}\) and does not itself bear on \cref{thm:lawbarrier}. It is
+nonetheless the natural empirical target for Aaronson's programme \citep{Aaronson2005}
+(\cref{sec:history}). By the same prefix-density argument (\cref{thm:prefix}) underlying
+\cref{thm:certifier}: a \emph{single} such demonstration can never be internally certified as a
+genuine complexity-class violation, since any finite observed prefix of the demonstration is
+equally consistent with an ordinary, bound-respecting computable continuation, so no internal
+test built from that prefix could be sound and ever fire. Only the \emph{scaling} of resource
+against instance size, across many instances, can be reported as evidence --- never certified
+as proof.
+
+\paragraph{Constants.} Finite decimal expansions of physical constants decide nothing:
+\cref{thm:notfindet} says any finite data is compatible with both \(\D\) and \(\mathtt{Cstrict}\).
+A theory that predicts a constant from a finite combinatorial structure and keeps being
+empirically confirmed to increasing precision is MDL \emph{evidence} in the sense of
+\cref{thm:outsourcing} --- never certification in the sense of \cref{thm:lawbarrier}. This is
+explicitly the correct epistemic status to claim for predictions coming out of the Universal
+Generative Principle (UGP) programme, and we state it plainly: such predictions, however
+striking, are evidence of the kind Theorem~5 identifies as the unique admissible kind, not
+proof of the kind Theorem~4 shows to be structurally unavailable.
+
+% ============================================================================
+% 8. THEOREM 5: OUTSOURCING AND MDL
+% ============================================================================
+\section{Theorems, Part II: Outsourcing and the Unique Admissible Adjudicator}
+\label{sec:mdl}
+
+\begin{definition}[Internally decidable]
+\label{def:intdec}
+A transcript property \(P\) is \emph{internally decidable}
+(\leanref{Substrate.InternallyDecidable}) if some internal test decides it exactly:
+\(\exists\, T,\ \forall f,\ T.\mathrm{run}(f) = \mathrm{true} \leftrightarrow P(f)\).
+\end{definition}
+
+\begin{theorem}[Outsourcing and the Unique Adjudicator]
+\label{thm:outsourcing}
+\label{thm:mdl-uniqueness}
+\begin{enumerate}[label=(\alph*), leftmargin=1.6em]
+\item \textbf{Outsourcing (Lean-checkable half).} No internally decidable property separates
+\(\D\) from \(\mathtt{Cstrict}\):
+\[
+  \neg\, \exists\, P,\ \mathrm{InternallyDecidable}(P) \wedge (\forall f \in \D,\ P(f)) \wedge
+  (\forall f \in \mathtt{Cstrict},\ \neg P(f)),
+\]
+and symmetrically for the reverse separation
+(\leanref{Substrate.substrate\_not\_internally\_decidable},
+\leanref{Substrate.substrate\_not\_internally\_decidable'}). Consequently, neither \(f \in \D\)
+nor \(f \in \mathtt{Cstrict}\) is itself internally decidable
+(\leanref{Substrate.discrete\_not\_internally\_decidable},
+\leanref{Substrate.strict\_continuum\_not\_internally\_decidable}). \emph{(Module
+\leanref{Substrate/Outsourced.lean}; status \A.)}
+\item \textbf{Uniqueness of the MDL adjudicator (cited, not re-derived).} The only adjudication
+procedure consistent with PSC --- one that (i) consults no oracle and (ii) is invariant under
+presentation of the same law-set --- is selection over complete law-sets by minimum description
+length (MDL). \emph{(Argument cited to NEMS Paper~34, ``A Sieve Engine for Theory Spaces,'' and
+Paper~84, ``The Survivor Calculus'' \citep{SpivackP34,SpivackP84}; status \AMDL, \emph{not} \A{}
+--- this half is not a Mathlib reduction and is not re-derived here.)}
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}[Proof sketch, part (a)]
+Every internally decidable property is finitely determined
+(\leanref{Substrate.internally\_decidable\_implies\_finitely\_determined}: a test only ever
+inspects a bounded prefix), so part (a) follows immediately from \cref{thm:notfindet}. Part (b)
+is cited to the NEMS programme results named above, not re-derived in this repository.
+\end{proof}
+
+Under Perfect Self-Containment (PSC), a self-contained system has no external selector to
+consult: there is no oracle, and no observer outside the system, that could supply a verdict the
+system itself cannot compute. \cref{thm:notfindet,thm:lawbarrier} together show that substrate
+class is not internally decidable from evidence or from law-certification --- part (a) above.
+Hence substrate discreteness is an \emph{outsourced} property in the precise sense of the
+Internality/Outsourcing Schema, NEMS Paper~83 \citep{SpivackP83}: a load-bearing task (here,
+adjudicating substrate) that cannot be discharged by any procedure internal to the system doing
+the adjudicating --- which is exactly what makes part (b)'s external adjudicator necessary.
+
+Consequence: \(\D\) consists exactly of the transcripts admitting a finite description (by
+\cref{lem:transcript-char}, a computable one); \(\mathtt{Cstrict}\) by construction admits none.
+MDL therefore adjudicates, uniquely and non-arbitrarily, in favor of the \textbf{finite-description
+class (\(\D \cup \mathrm{Glimmer}\))}, not \(\D\) alone --- not as a methodological preference for
+simplicity, but as the one selection procedure that survives the closure requirement PSC
+imposes. \(\D\) alone would be the wrong name for what MDL selects: NEMS Paper~12 (Determinism
+No-Go) proves that no total computable law generates the records in a diagonal-capable PSC
+universe with genuine record-divergent choice \citep{SpivackP12}, so a universe with that
+property has no computable transcript and hence is not itself a member of \(\D\); the glimmer
+class (\(\Delta^0_2\), finitely described by law plus one jump, \cref{sec:glimmer}) is what
+closes this gap, and is why \cref{sec:glimmer} is a load-bearing part of this theorem's
+statement rather than a deferred open problem. This is the bridge to the Universal
+Generative Principle (UGP) programme: UGP's stance that a compact, finite generative structure
+functions as a certificate for physical law is precisely \cref{thm:mdl-uniqueness} applied to
+one specific law-set, and \cref{sec:scaling}'s remark on constants states the resulting
+epistemic status explicitly.
+
+\paragraph{``Discrete'' is a description-length notion, not a geometry, and a continuum
+substrate can be its worked example.} One clarification matters for a physicist reader applying
+\cref{thm:mdl-uniqueness} to a candidate fundamental theory: \emph{``discrete'' in this paper
+never meant ``lattice''; it meant ``finitely generated.''} \(\D\) is defined by computable
+\emph{transcript} (\cref{lem:transcript-char}), a description-length class, not a geometry
+class, and \cref{lem:embedding} already proves \(\D \subseteq \mathtt{C}\): every
+discrete-transcript world is realized by \emph{some} continuum world. A continuum substrate with
+a finite arithmetic generator therefore sits in \(\D \cap \mathtt{C}\) by transcript ---
+continuum by state type, finitely described by transcript --- and this is not a counterexample
+to \cref{thm:mdl-uniqueness}; it is the theorem's worked example. The Universal Generative
+Principle (UGP) programme's \(\Phi_{\mathrm{MDL}}\)/GTE framework is exactly this case: a
+continuum field whose observable transcript is generated by a finite arithmetic certificate, so
+it is precisely the kind of world \cref{thm:mdl-uniqueness} selects, stated in the vocabulary of
+a specific physical theory rather than in the abstract model above --- not a rival to this
+paper's agnosticism, but an instance of what the theorem already predicts should be favored.
+
+This also resolves an apparent tension with NEMS Paper~24's claim that the universe must begin
+as a discrete, self-interpreting ``Reflexive Seed'' \citep{SpivackP24}. That claim is a
+\cref{thm:mdl-uniqueness}-direction result about \emph{initial conditions}, not an internal
+certification of the \cref{thm:lawbarrier} kind: a classical singularity is an underspecified
+boundary that requires external completion, hence non-foundational under PSC, so closure
+prefers a finite, self-interpreting origin over an unbounded one \citep{SpivackP18,SpivackP27}.
+Crucially, the seed is prior in \emph{generative} order, not \emph{temporal} order. The
+Infinity Compression thesis's two-layer structure --- a bare certificate \(B\), an enriched
+realization \(E\), and a comparison map \(\pi : E \to B\) with nontrivial fibers and sections
+--- is the formal handle for exactly this relation: the finite generator is \(B\), the continuum
+realization is \(E\), and asking whether \(B\) exists ``before'' \(E\) is asking whether a
+genotype exists before its phenotype (an analogy offered with its own caveat, since it is not
+exact: a genotype is itself a physical object in time, whereas the seed is a type) --- generative
+priority, not temporal priority. On this reading, Paper~24's discreteness claim and this paper's
+substrate-agnosticism are consistent rather than in tension: Paper~24 makes a claim about
+admissible initial data (an outsourcing/MDL selection, in this paper's \cref{thm:mdl-uniqueness}
+sense), not a claim that spacetime itself is a lattice, and not an internal certification that
+would run afoul of \cref{thm:lawbarrier}.
+
+\setcounter{corollary}{0}
+\begin{corollary}[Uncountable-observer strengthening of Theorem~5]
+\label{cor:cardinality}
+\(\D\) is countable (\leanref{Substrate.D\_countable}) and \(\mathtt{Cstrict}\) is not
+(\leanref{Substrate.Cstrict\_not\_countable}). More strongly, no family of internal tests
+\(\mathrm{tests} : I \to \mathrm{InternalTest}\), indexed by an \emph{arbitrary} type \(I\) ---
+including an uncountable one --- jointly decides discrete membership:
+\begin{multline*}
+  \neg\, \exists\, (\mathrm{tests} : I \to \mathrm{InternalTest}),\
+  (\forall f \in \D,\ \exists i,\ \mathrm{tests}(i).\mathrm{run}(f)) \,\wedge\, {} \\
+  (\forall f \in \mathtt{Cstrict},\ \forall i,\ \neg\,\mathrm{tests}(i).\mathrm{run}(f)).
+\end{multline*}
+{\raggedright\emph{(\leanref{Substrate.no\_joint\_substrate\_decision}, module
+\leanref{Substrate/Cardinality.lean}; an analogous strengthening for internally decidable
+predicates, over any index type, is \leanref{Substrate.no\_joint\_internally\_decidable}.)}\par}
+\end{corollary}
+
+\begin{proof}[Proof sketch]
+The obstruction is exactly \cref{thm:prefix} again, not a cardinality argument: fix any
+candidate family and let \(f_0\) be the constant-zero (discrete) transcript; some test \(i\)
+must accept \(f_0\). Applying \cref{thm:prefix} to the prefix that test \(i\) actually inspects
+produces a \(\mathtt{Cstrict}\)-witness agreeing with \(f_0\) on that prefix, so test \(i\)
+accepts it too, contradicting the joint-decision hypothesis. No step of this argument depends
+on the cardinality of the index type \(I\); an uncountable family of observers adds no power
+beyond a single one (\leanref{Substrate.uncountable\_index\_offers\_no\_power}). The
+countability facts above are worth recording in their own right --- \(\D\) is a subset of the
+computable functions, hence countable (\leanref{Substrate.computable\_set\_countable}), while
+\(\mathtt{Cstrict}\) occupies almost all of Baire space (\leanref{Substrate.baire\_space\_not\_countable})
+--- but they are not what does the work here; the work is prefix indistinguishability, exactly
+as in \cref{thm:notfindet,thm:outsourcing}.
+\end{proof}
+
+This forecloses a natural escape attempt one might otherwise propose against \cref{thm:outsourcing}:
+pooling an unlimited, even uncountable, supply of cooperating internal observers cannot recover
+what a single observer cannot decide, since the obstruction is topological density in Baire
+space, which is entirely insensitive to how many observers are asking.
+
+\begin{corollary}[Measure-theoretic typicality of the continuum class]
+\label{cor:measure-typicality}
+Under the canonical geometric i.i.d.\ product measure \(\mu_p\) on Baire space (any parameter
+\(p \in (0,1)\)), \(\D\) has measure zero and \(\mathtt{Cstrict}\) has full measure:
+\[
+  \mu_p(\D) = 0, \qquad \mu_p(\mathtt{Cstrict}) = 1.
+\]
+{\raggedright\emph{(\leanref{Substrate.D\_null\_geometric}, \leanref{Substrate.Cstrict\_full\_mass\_geometric},
+module \leanref{Substrate/Probabilistic.lean}.)}\par}
+\end{corollary}
+
+\begin{proof}[Proof sketch]
+\(\mu_p\) has no atoms: the per-coordinate geometric measure of any single symbol is bounded
+above by \(p < 1\) uniformly, so the infinite product of these bounds tends to \(0\), giving
+\(\mu_p(\{f\}) = 0\) for every transcript \(f\). Since \(\D\) is countable (\cref{cor:cardinality}),
+it is a countable union of \(\mu_p\)-null singletons, hence itself \(\mu_p\)-null
+(\leanref{Substrate.D\_null\_geometric}). Since \(\mathtt{C} = \mathrm{univ}\)
+(\cref{rem:modeling}, \leanref{Substrate.C\_eq\_univ}), \(\mathtt{Cstrict} = \mathrm{univ}
+\setminus \D\) (\leanref{Substrate.Cstrict\_eq\_univ\_diff\_D}), so
+\(\mu_p(\mathtt{Cstrict}) = 1 - \mu_p(\D) = 1\)
+(\leanref{Substrate.Cstrict\_full\_mass\_geometric}).
+\end{proof}
+
+This reinforces \cref{cor:cardinality} from a different direction: not only does no family of
+internal observers, of any cardinality, jointly decide substrate class, but under the geometric
+family of product measures specifically, a transcript drawn at random is strict-continuum with
+probability~1. That verdict is not, however, forced by the mathematics of measure itself, and
+stating it as typicality \emph{simpliciter} would be exactly the external-selector move
+\cref{sec:psc} identifies as PSC's target: choosing \(\mu_p\) over every other measure on Baire
+space is itself an unexplained external choice, on a par with eternal inflation's measure
+problem. The clearest way to see this is to change the choice. The Solomonoff/MDL universal
+prior --- \cref{sec:psc}'s own example of PSC applied to constants, and the actual adjudication
+principle \cref{thm:mdl-uniqueness} invokes --- weights a sequence's finite prefixes by
+description length rather than by a fixed per-symbol probability: a computable sequence
+generated by a program of size \(c\) has prefix-length-\(n\) algorithmic probability bounded
+below by \(2^{-c - O(\log n)}\), a decay that is polynomial in \(n\), while \emph{every}
+sequence's length-\(n\) prefix, computable or not, decays exponentially in \(n\) under any
+nondegenerate \(\mu_p\) --- the identical atomlessness mechanism behind this corollary's own
+proof \citep{LiVitanyi2008}. Under the universal prior, then, finitely describable sequences are
+the ones exponentially favored, not the ones typicality discards: \cref{cor:measure-typicality}'s
+verdict and the universal prior's verdict are exact opposites, and the entire disagreement
+between them lives in which prior the adjudicator adopts, not in any fact about the substrate.
+This is the sharpest illustration available of why \cref{thm:mdl-uniqueness} adjudicates the way
+it does: it does not sample from \(\mu_p\), from the universal prior, or from any measure over
+Baire space at all, precisely because doing so would smuggle back in the external selector PSC
+forbids. MDL selection over complete law-sets is a closure-respecting procedure, not a draw from
+a distribution over which universe is real, and \cref{cor:measure-typicality} is best read not as
+evidence for the continuum but as a demonstration of exactly how badly a naive sampling-measure
+adjudicator fails the very closure requirement this paper's actual adjudicator is built to
+satisfy. None of this bears on what an \emph{internal test} can detect from a finite prefix, nor
+does it by itself yield an \(\varepsilon\)-tolerant test: see the probabilistic-observers
+discussion in \cref{sec:open} for exactly where that further step remains open and why.
+
+\subsection{The glimmer corollary}
+\label{sec:glimmer}
+
+The glimmer corollary is essential to Theorem~5, not an optional addendum to it: without it,
+the theorem's conclusion would name a class that the programme's own account of axis~C says
+the actual universe is not in. NEMS Paper~12
+(Determinism No-Go) proves that no total computable law generates the records in a
+diagonal-capable PSC universe with genuine record-divergent choice \citep{SpivackP12}, so a
+universe with that property does \emph{not} have a computable transcript, and \(\D\) alone would
+then be the wrong name for what MDL actually selects. Glimmer resolves this: a glimmer world has
+a \emph{computable law} and a \(\Delta^0_2\) transcript --- the outcomes are not free bits, since
+they are fixed by the law plus one jump with no external selector, so the world still has a
+finite description and \cref{thm:mdl-uniqueness} still selects it. \cref{sec:mdl}'s consequence
+paragraph and the abstract accordingly say ``finite-description class (\(\D \cup
+\mathrm{Glimmer}\))'' rather than ``finite-information class,'' for exactly this reason. The
+definitions and theorem statements below are proved in a companion Lean module,
+\leanref{Substrate/Glimmer.lean}, \textbf{machine-checked and part of this repository's audited,
+sorry-free build} (full Lean status disclosed below, after the derivation chain); the
+classification itself is a matter of mathematics and formalization, complete and
+machine-checked --- only the Born-martingale lemma below carries an open physical premise.
+
+\emph{Informal idea.} A \emph{glimmer} is a sequence that is random from inside an effective
+description and structured from one level above it. The paradigm example is Chaitin's
+\(\Omega\) \citep{Chaitin1975}: no computable betting strategy (martingale) beats it, yet it is
+fixed by a finite formula and is computable \emph{from} the halting set --- it sits at Turing
+degree \(\mathbf{0}'\), i.e.\ it is \(\Delta^0_2\). (\(\Omega\) is in fact Martin-L\"of random,
+a strictly stronger property than immunity to merely computable martingales; the formal
+definition below deliberately uses the weaker \emph{computably random} notion, since that is
+exactly what the Born-martingale lemma's argument, stated in terms of computable martingales, is
+capable of establishing --- see the derivation chain below. Since Martin-L\"of randomness
+implies computable randomness, \(\Omega\) satisfies the weaker notion too, so the flagship
+example is unaffected by this choice.) The claim under investigation, not proved here, is that
+quantum measurement/adjudication outcomes are glimmers relative to the physical law: not brute
+randomness, but structure the law itself cannot parse from the inside.
+
+\emph{Idealization caveat.} Randomness notions --- computable randomness, Martin-L\"of randomness
+--- are properties of \emph{infinite} sequences. Nothing here commits the paper to an infinite
+universe: in a finite-information, finite-lifetime universe every realized transcript is finite,
+and the correct finitary form of the claim below is \emph{prefix incompressibility}, \(K(f
+\!\restriction\! n) \ge n - c\) for the realized prefixes relative to the law, for a constant
+\(c\) independent of \(n\). We state the infinite-sequence form throughout for continuity with
+the algorithmic-randomness literature cited below; the finitary form is the one that actually
+applies to any physically realized, finite-lifetime transcript.
+
+\emph{Four-class taxonomy.} Fix an effective description \(E\) = (computable law with
+computable Born measure \(\mu\), internal observer) and let \(f : \N \to \N\) be the
+adjudication transcript. The four classes below exhaust all possible adjudication transcripts
+relative to \(E\) precisely because UGP Paper~51's bound \citep{SpivackUGP51} establishes
+\(f \le_T \mathbf{0}'\) under that paper's hypotheses (the DSAC model) for transcripts arising in
+this framework, ruling out a residual fifth case --- non-computable, not computably random, and
+not \(\Delta^0_2\) --- that would otherwise fall outside all four boxes below.
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+\textbf{Class} & \textbf{Definition} & \textbf{Example} & \textbf{Status} \\
+\midrule
+1. Pseudorandom & \(f\) computable & any PRNG & excluded by the non-degeneracy premise \citep{SpivackP12} plus the Born-martingale lemma (below); \emph{not} by Paper~11 alone \\
+2\('\). Unpredictable, compressible & \(f\) not computable, not computably random, \(f \le_T \mathbf{0}'\) & the halting set itself & excluded by the \emph{same} lemma as class~1 --- see the derivation chain below \\
+2. \textbf{Glimmer} & \(f\) computably random relative to \(\mu\) \textbf{and} \(f \le_T \mathbf{0}'\) (i.e.\ \(\Delta^0_2\)) & \(\Omega\) & the claimed class for physical randomness \\
+3. Truly random & \(f\) computably random relative to \(\mu\), not \(\Delta^0_2\) & a.e.\ Martin-L\"of-random sequence & excluded by UGP Paper~51 \citep{SpivackUGP51} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Class~2 is measure-zero but nonempty. The distinction between \emph{unpredictable} (no total
+computable predictor) and \emph{incompressible} (immune to every computable martingale) is
+exactly what separates class~1 from class~2\('\); NEMS Paper~11 (``Physical Incompleteness''
+\citep{SpivackP11}) is cited only as context for this distinction, not as doing the
+class-1-exclusion work itself --- that work is done by the derivation chain that follows.
+
+\emph{Derivation chain.} Class~1 and class~2\('\) exclusion does not route through Paper~11, nor
+through any premise about the realized transcript being non-computable as a \emph{conclusion} of
+a law-level result; instead it falls out of the
+Born-martingale lemma itself, with Paper~12 supplying a premise rather than a conclusion.
+\begin{enumerate}[leftmargin=1.8em,itemsep=0.3em]
+\item \textbf{Premise (non-degeneracy / genuine choice).} \(\mu(\text{next symbol}) \le 1 -
+\varepsilon\) infinitely often along \(f\), for some fixed \(\varepsilon > 0\). This is exactly
+NEMS Paper~12's own premise, ``record-divergent choice'' \citep{SpivackP12}, so Paper~12 is cited
+\emph{for the premise}, not for a claim about the transcript's computability. A degenerate
+\(\mu\) (all conditional probabilities eventually \(0\) or \(1\)) gives no randomness and the
+question does not arise.
+\item \textbf{Born-martingale lemma (open).} If \(\mu\) is complete internal semantics per
+Papers~13/14 \citep{SpivackP13,SpivackP14}, no computable \(\mu\)-martingale succeeds on \(f\)
+--- i.e.\ \(f\) is computably random relative to \(\mu\). Combined with the elementary fact that
+a computable, non-degenerate \(f\) admits a computable martingale that bets everything on
+\(f(t)\) and succeeds (\leanref{Substrate.computable\_not\_random}, module
+\leanref{Substrate/Glimmer.lean}), this gives \(f \notin\) class~1 and \(f \notin\) class~2\('\)
+simultaneously, since both classes require \(f\) to fail computable randomness. \textbf{The
+completeness premise itself --- that the physical Born measure genuinely constitutes complete
+internal semantics, hence that no computable martingale succeeds on the actually realized
+transcript --- is not proved anywhere in the programme}; the gap is narrow and precisely
+located, not generic. It is \emph{not} a randomness-theory gap: the martingale and
+computable-randomness machinery the lemma needs is already fully built and machine-checked
+(\cref{sec:glimmer}). Nor can it be closed by simply \emph{defining} ``complete internal
+semantics'' to mean ``\(f\) is computably random'' --- that would presuppose exactly what the
+lemma is meant to establish, foreclosed by this development's no-smuggling convention; indeed
+the unrestricted universal form of the premise (every non-degenerate \(f\) admits no successful
+computable martingale) is outright \emph{false} here, since
+\leanref{Substrate.BetMartingale.bet\_succeeds} proves the opposite for every \emph{computable}
+non-degenerate \(f\), so the lemma can only ever concern the specific, presumptively
+non-computable, realized transcript of a genuinely complete-semantics universe. Nor is a
+suitable bridge available from the existing quantum-formalism side: the nearest existing
+candidate for ``complete internal semantics,'' \texttt{BICS} in the companion
+\texttt{nems-lean} development (Papers~13/14), is a semantic-architecture predicate over
+density operators and Born-trace probabilities, with no notion of a realized \(\N \to
+\mathrm{Fin}\,k\) sequence or computable martingale at all --- categorically the wrong kind of
+object to bridge directly. What remains open is therefore exactly and only a
+non-question-begging formalization of the physical premise itself as a predicate on realized
+transcripts; this is the one piece that cannot be closed without new physical or interpretive
+input, and this paper states the dependency honestly rather than treating it as established.
+\item \textbf{UGP Paper~51 (adjudication at degree exactly \(\mathbf{0}'\)).} \(f \le_T
+\mathbf{0}'\) \citep{SpivackUGP51} \(\Rightarrow\) \(f \notin\) class~3.
+\item Hence, conditionally on step~2's premise, \(f \in\) class~2 (glimmer).
+\end{enumerate}
+We note explicitly that step~2's supporting fact
+(\leanref{Substrate.computable\_not\_random}) establishes only computable-randomness immunity
+(against computable martingales), not the strictly stronger Martin-L\"of randomness (which
+requires immunity to the larger class of left-c.e.\ lower-semicomputable supermartingales); this
+is exactly why the taxonomy above is stated in terms of computable randomness rather than
+Martin-L\"of randomness --- using the stronger notion here would require a correspondingly
+stronger, less obviously justified premise about what the Born measure's completeness rules out.
+
+\begin{quote}
+\small\raggedright
+\textbf{Lean status --- \A, machine-checked.} A companion Lean module,
+\leanref{Substrate/Glimmer.lean}, proves exactly the definitions and theorem statements named
+above (\leanref{Substrate.LimitComputable}, \leanref{Substrate.BornMeasure},
+\leanref{Substrate.BornMeasure.NonDegenerateAlong}, \leanref{Substrate.BornMeasure.CMartingale},
+\leanref{Substrate.Succeeds}, \leanref{Substrate.ComputablyRandom},
+\leanref{Substrate.Glimmer}, \leanref{Substrate.limitComputable\_dense},
+\leanref{Substrate.notLimitComputable\_dense},
+\leanref{Substrate.limitComputable\_not\_finitely\_determined},
+\leanref{Substrate.glimmer\_finite\_description}, \leanref{Substrate.computable\_not\_random},
+\leanref{Substrate.glimmer\_not\_computable}, \leanref{Substrate.glimmer\_disjoint\_D},
+\leanref{Substrate.glimmer\_subset\_Cstrict}), and is part of this repository's audited,
+sorry-free build (imported by \leanref{Substrate.lean}; \texttt{lake build}: 8262/8262 jobs,
+zero errors). The bet-everything martingale construction
+(\leanref{Substrate.BetMartingale.bet} / \leanref{Substrate.BetMartingale.bet\_succeeds}) is
+fully proved, with no \texttt{sorry} placeholders, via an explicit ``wrong-child'' dead-branch
+mechanism handling off-path martingale fairness; \leanref{Substrate.glimmer\_finite\_description}
+states the non-vacuous fact that a limit-computable sequence is fixed by one code plus a
+convergent stage function (\(\exists\, c,\ g,\ \mathrm{Computable}(g) \wedge (\forall t,\
+\exists s_0,\ \forall s \ge s_0,\ g(t,s) = f(t)) \wedge \mathrm{eval}(c) = \ldots\)), not merely
+an unconditional witness. Every declaration named above is confirmed by direct
+\texttt{\#print axioms} to depend on at most the three standard Mathlib axioms
+(\texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}); see Appendix~\ref{app:lean}
+for the full table. Non-emptiness of \(\mathrm{Glimmer}\) for the uniform measure (Chaitin's
+\(\Omega\)) is cited, not built, per Downey--Hirschfeldt \citep{DowneyHirschfeldt2010} ---
+status \A/\textsc{d}, unaffected by the point above.
+\end{quote}
+
+\emph{Modeling note.} The \texttt{World} structure (\cref{def:world}) is deterministic, so a
+glimmer world is not itself a \texttt{World}: this paper's transcripts are the observer's
+channel, and the formal model is deliberately class-agnostic about how the substrate produced
+them. A glimmer transcript is one \emph{produced by} a deterministic law plus a \(\Delta^0_2\)
+adjudication stream, and \(\mathrm{Glimmer}\) is defined directly on transcripts, not on
+\texttt{World}. Generalizing \texttt{World} with an explicit adjudication input is future work;
+nothing in Part~I needs it.
+
+\emph{What it is not.} Not a hidden-variable theory: the \(\Delta^0_2\) description is of the
+whole sequence, not a local pre-assignment, so Bell's theorem \citep{Bell1964} is untouched. Not
+internally usable determinism: \cref{thm:notfindet} still applies (class~2 versus class~3 is
+itself not finitely determined) and \cref{thm:certifier} still applies (no internal certifier
+can fire on this distinction either). The bridge to physical adjudication traces, if the
+Born-martingale lemma is eventually proved, would land in a companion paper via NEMS
+Papers~76/77 \citep{SpivackP76,SpivackP77}.
+
+\emph{Usage rule for this paper and its companions.} ``Glimmer'' means class~2 only, always
+relative to a named \(E\). Unqualified ``random'' means classes \(2 \cup 3\); ``truly random''
+means class~3 only; ``unpredictable'' means \(\notin\) class~1 and must not be conflated with
+``random.''
+
+
+% ============================================================================
+% 9. DISCUSSION
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Methodological consequence: hunt exponents, not thresholds}
+
+The central methodological claim of this paper is that ``test whether the substrate is
+discrete'' is not merely a hard experiment to design --- it is, for any test of the finitely
+determined shape, structurally the wrong kind of question, because \cref{thm:notfindet} proves
+no such test can in principle succeed, independent of instrumental precision or ingenuity. This
+reframes what counts as progress. A negative result from a Planck-scale interferometry search,
+or from a search for Lorentz-violating dispersion, is not evidence \emph{against} discreteness
+in the way it would naively be read; it is evidence against \emph{one particular
+discretization scheme}, exactly as the causal-set programme demonstrated
+(\cref{sec:history}). The correct empirical strategy, per \cref{sec:scaling}, is to hunt
+\emph{asymptotic scaling exponents} --- metrological precision scaling, recurrence-time scaling,
+resource-versus-instance-size scaling for candidate hypercomputational demonstrations --- because
+these are the one class of observable that is not finitely determined and therefore is not
+excluded by \cref{thm:notfindet}. This is a genuine redirection of experimental priority, not a
+weakening of empirical ambition: it says the interesting physics is in the exponent, not in the
+threshold.
+
+\subsection{What is proved versus what is cited: the A\_Lean / A\_MDL line}
+
+It matters, and we state it here without hedging, exactly where the machine-checked boundary
+sits. Lemmas~2.1--2.2, Theorems~1--4, Corollary~4.1, Theorem~4\('\)'s \(\Pi^0_2\)-hardness
+sharpening (\leanref{Substrate.law\_match\_pi2\_hard}), the outsourcing half of Theorem~5
+(\cref{thm:outsourcing}), its uncountable-observer strengthening (\cref{cor:cardinality}), the
+deterministic half of the probabilistic-observers result
+(\leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict}), the measure-zero/full-measure
+classification of \(\D\)/\(\mathtt{Cstrict}\) (\cref{cor:measure-typicality}), the glimmer
+corollary's definitions and separations (\cref{sec:glimmer}), and the axis-A dense pair
+(\cref{rem:axisA}) are all proved and machine-checked (\A, Appendix~\ref{app:status}) in Lean~4
+against Mathlib, with zero \texttt{sorry} and zero custom axioms. The only exceptions on the
+Lean side of the ledger are the Born-martingale lemma's physical completeness premise
+(\cref{sec:glimmer}, genuinely open, not a formalization gap) and the \(\varepsilon\)-tolerant
+randomized generalization of the probabilistic-observers result (\cref{sec:open}). The
+\emph{uniqueness}-of-MDL half of Theorem~5 (\cref{thm:mdl-uniqueness}) is \AMDL: an argument
+cited to NEMS Papers~34 and~84 \citep{SpivackP34,SpivackP84}, not a Mathlib reduction carried
+out in this repository. This is not a gap we are trying to paper over --- it reflects a genuine
+difference in the kind of claim being made. ``No internally decidable property separates the
+two transcript classes'' is a closed mathematical statement about a formally defined class of
+procedures, and Lean can check it end to end. ``MDL is the unique selection procedure meeting
+two stated closure desiderata'' is itself a theorem, proved elsewhere in the NEMS programme, but
+importing that proof's premises (a formal notion of ``selection procedure invariant under
+presentation'') into this repository's vocabulary is future formalization work, not a
+philosophical shortcut. We flag this explicitly so that no reader mistakes the paper's overall
+confidence in Theorem~5 for uniform machine-checked confidence in both of its halves.
+
+\subsection{Relation to the digital-physics debate}
+
+This paper's stance toward Zuse, Fredkin, Wolfram, and 't~Hooft on one side, and an
+unrestricted-continuum view on the other, is neutrality of a specific and strong kind: not ``we
+do not know which is right,'' but ``neither can be internally proved right, and this is a
+theorem, not an admission of ignorance.'' That is a stronger and different claim than declining
+to take a side in the ordinary sense. A digital-physics advocate who points to a successful
+match between a candidate discrete rule and observed physics, however striking the match, is
+producing exactly the situation \cref{thm:lawbarrier} addresses: a candidate law that has
+matched so far, with no internal procedure available to certify that the match will continue
+forever or that it is not one of the countably many discrete laws that happens to agree with
+observations up to the current prefix while a continuum, or a different discrete law, diverges
+downstream. Symmetrically, a continuum advocate who treats general relativity's differentiable
+manifold as established fact about the actual substrate, rather than as the best-performing
+finitely-described theory to date, is claiming a certification that \cref{thm:lawbarrier} shows
+is unavailable to them too. The paper's neutrality is therefore not agnosticism about physics;
+it is a proof that the entire debate, as usually conducted (each side citing empirical success as
+if it amounted to internal proof), is arguing for something structurally unprovable from the
+inside, regardless of which side is factually correct.
+
+\subsection{Honest limitations beyond \texorpdfstring{\cref{sec:whatnot}}{Section~6}}
+
+\cref{sec:whatnot} states the theorems' technical limits; here we state programmatic ones.
+First, if computable analysis is eventually added to Mathlib, the refinement sketched in
+\cref{rem:modeling} and \cref{sec:whatnot} item~4 should be carried out as a genuine
+formalization project, not merely asserted via Pour-El--Richards; until then, the v1 development's
+reliance on an unrestricted classical continuum is a real, disclosed simplification, not a
+hidden one. Second, the quantum extension sketched in \cref{sec:open} --- replacing
+\texttt{World} with a finite-dimensional versus separable Hilbert space and a POVM readout ---
+is currently only a sketch: \cref{thm:prefix} is expected to go through essentially unchanged,
+but whether \cref{thm:lawbarrier} survives with a unitary \(\mathrm{step}\) is a genuinely open
+question, since the reduction's diagonal construction currently exploits classical branching
+(\texttt{if}-\texttt{then}-\texttt{else} on a halting check) that does not obviously transfer to
+unitary evolution without decoherence or measurement entering the model. Third, axis~C
+(objective randomness) is addressed directly: the glimmer corollary (\cref{sec:glimmer}) is
+proved in this paper, with its definitions and derivation chain machine-checked, because
+\cref{thm:mdl-uniqueness}'s conclusion is not correctly statable without it. One honest gap
+remains, and we disclose it precisely rather than rounding it up to a claimed result: the
+Born-martingale lemma itself --- that the actual physical Born measure admits no successful
+computable martingale on the realized transcript --- is not yet proved anywhere in the
+programme. That is the \emph{only} gap: the Lean module proving the classification's
+mathematical content (\leanref{Substrate/Glimmer.lean}) is part of this repository's audited,
+sorry-free build, as disclosed in full in \cref{sec:glimmer}.
+
+\subsection{Forward-looking directions}
+
+Each remaining item in \cref{sec:open} matters for a distinct reason, stated there in full; in
+summary: the deterministic half of the probabilistic-observers question is closed
+(\cref{sec:open}), and Baire space carries a genuine probability measure under which
+discreteness is measure-zero-typical (\cref{cor:measure-typicality}); what remains is genuinely
+closer to real experimental practice --- a \emph{randomized} test with some advantage short of
+certainty, evaluated against a measure that does not already assign full mass to one class by
+construction. The cardinality strengthening of Theorem~5, \cref{cor:cardinality}, forecloses a
+natural ``pool enough observers'' escape attempt, showing the barrier survives even an
+uncountable family of cooperating internal observers. And the glimmer corollary's missing
+Born-martingale lemma is the single result standing between this paper's programme and a
+genuine resolution of axis~C's relationship to axis~B, which is why we name it explicitly as
+the actual formal target rather than leaving axis~C as an unstructured gap.
+
+% ============================================================================
+% 10. OPEN PROBLEMS AND EXTENSIONS
+% ============================================================================
+\section{Open Problems and Extensions}
+\label{sec:open}
+
+\begin{itemize}[leftmargin=1.8em,itemsep=0.5em]
+\item \textbf{Computable-analysis refinement of \texttt{ContinuumWorld}.} Restrict
+\(\mathrm{step}\) to Cauchy-modulus-computable maps on Cauchy-modulus-computable reals.
+\(\mathtt{Cstrict}\) provably remains nonempty under this refinement, by Pour-El--Richards
+\citep{PourElRichards1981} (\cref{sec:history}, with the regularity caveat noted there).
+Precisely what is missing: current Mathlib provides no computable-analysis framework at all
+--- no notion of a Cauchy-modulus-computable real, no Weihrauch-degree machinery, nothing
+analogous to the \texttt{Computable} predicate on \(\N \to \N\) already used throughout this
+development (verified by direct search of the Mathlib source: zero occurrences of
+\texttt{Weihrauch} or \texttt{CauchyModulus} anywhere in the library as of this writing).
+Formalizing this refinement therefore means building a computable-analysis layer largely from
+scratch, not applying existing machinery; that is well beyond this paper's scope.
+\item \textbf{Quantum version.} Replace \texttt{World} with a finite-dimensional versus
+separable Hilbert space and a POVM readout. \cref{thm:prefix} is expected to go through with
+essentially the same proof strategy. Whether \cref{thm:lawbarrier} survives with a unitary
+\(\mathrm{step}\) is open (\cref{sec:discussion}). Precisely what is missing: Mathlib currently
+has zero formalization of POVMs, density operators, or completely-positive trace-preserving
+(CPTP) maps (verified by direct search), so even \emph{stating} the quantum extension formally
+--- not merely proving \cref{thm:lawbarrier}'s quantum analogue --- is future infrastructure
+work, not a proof gap in the existing development.
+\item \textbf{The Born-martingale lemma} (\cref{sec:glimmer}) --- the one genuinely open piece
+of the glimmer corollary, whose definitions, four-class taxonomy, and derivation chain are
+settled Part~II content (\cref{sec:glimmer}), not an open problem. What remains is a single
+physical/interpretive premise: that the actual physical Born measure, as complete internal
+semantics per NEMS Papers~13/14 \citep{SpivackP13,SpivackP14}, admits no successful computable
+martingale on the realized transcript. This is not a randomness-theory gap --- the martingale
+and computable-randomness machinery the lemma needs is already fully built and machine-checked
+(\cref{sec:glimmer}) --- and it cannot be closed by definitional fiat without smuggling the
+conclusion; see \cref{sec:glimmer} for the full derivation chain and precisely why this premise,
+and only this premise, remains open.
+\item \textbf{Probabilistic observers.} The deterministic class-advantage obstruction is
+proved: an internal test has positive acceptance on \(\D\) if and only if it has positive
+acceptance on \(\mathtt{Cstrict}\) (\leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict}, module
+\leanref{Substrate/Probabilistic.lean}), so no internal test exhibits exclusive class advantage
+(\leanref{Substrate.not\_exclusive\_acceptance}) --- the prefix-lifting of \cref{thm:notfindet}
+from properties to a test's acceptance behavior, by the identical mechanism
+(\cref{thm:prefix}). Baire space carries a genuine measure-theoretic treatment:
+\leanref{Substrate/Probabilistic.lean} wires in Mathlib's Ionescu--Tulcea-based
+\texttt{MeasureTheory.Measure.infinitePi} directly
+onto \(\N \to \N\), giving a canonical geometric i.i.d.\ product measure under which \(\D\) is
+null and \(\mathtt{Cstrict}\) has full measure (\cref{cor:measure-typicality}). What remains
+genuinely open is a \emph{genuinely randomized}, error-tolerant test. Prefix indistinguishability
+(\cref{thm:prefix}) transports individual witnesses between classes, but it does not bound
+\emph{aggregate} class-conditional acceptance-rate differences under a sampling measure: the
+distribution of prefixes under a \(\D\)-conditioned sample and a \(\mathtt{Cstrict}\)-conditioned
+sample can differ arbitrarily, so witness-transport alone gives no rate bound. A non-trivial
+\(\varepsilon\)-tolerant result requires a genuinely randomized test --- one with independent
+internal randomness, not merely a prefix-determined confidence function --- evaluated against a
+\emph{mixture} measure that assigns controllable positive mass to both \(\D\) and
+\(\mathtt{Cstrict}\) separately, since under any single i.i.d.\ product measure on the full
+transcript space \(\D\) is null and \(\mathtt{Cstrict}\) has full mass
+(\cref{cor:measure-typicality}), so conditioning on \(\D\) alone is degenerate under that
+measure. A witness-based restatement using a prefix-determined confidence function
+(\leanref{Substrate.HasProbAcceptAbove}) turns out to add no independent content on inspection:
+since the confidence value depends only on the prefix, \cref{thm:prefix} transports
+\emph{identical} confidence values between classes, not merely \(\varepsilon\)-close ones, so
+the tolerance parameter never does any real work in that construction --- it is a notational
+restatement of \leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict}, not an independent
+strengthening, and is omitted from Appendix~\ref{app:lean} on those grounds.
+\end{itemize}
+
+% ============================================================================
+% 11. CONCLUSION
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have shown, and machine-checked in Lean~4 against Mathlib with zero \texttt{sorry} and zero
+custom axioms, that no finite-resource observer internal to a physical system can decide
+whether that system's substrate is discrete or continuum, on either of the two readings that
+matter (information density and dynamics). The obstruction comes in two independent forms: a
+topological barrier that needs no computability theory at all, and a recursion-theoretic barrier
+that reduces from the halting problem even when the observer is handed a complete candidate law.
+Under Perfect Self-Containment, this makes substrate discreteness an outsourced property, and the
+only lawful internal-consistent adjudicator --- by an argument cited from the companion NEMS
+programme, not re-derived here (\cref{sec:discussion}) --- is minimum-description-length
+selection over complete law-sets: not a methodological preference, but the unique procedure that
+survives the closure requirement. This dissolves the traditional grid-search experimental programme's
+claim to settle the question, redirects empirical attention to asymptotic scaling exponents, and
+places the epistemic status of finite, compressive physical theories --- including those coming
+out of the UGP programme --- exactly where Theorem~5 puts it: strong evidence, never
+certification. The results are not silent on objective randomness: the glimmer
+corollary's definitions and separations are machine-checked (\cref{sec:glimmer}) --- but the
+Born-martingale lemma's physical completeness premise, and the question of which substrate
+actually obtains, are left, honestly, as open.
+
+% ============================================================================
+% APPENDIX A
+% ============================================================================
+\appendix
+
+\section{Lean Statement List}
+\label{app:lean}
+
+\begin{quote}
+\textbf{Axiom-printout status: final.} \texttt{Substrate/*.lean} builds cleanly
+(\texttt{lake build}: 8262/8262 jobs, zero errors) and \texttt{grep -r sorry Substrate/} finds
+nothing. The \texttt{\#print axioms} column below was obtained by running
+\texttt{lake env lean scripts/axiom\_audit.lean} (the declarations that script covers include every \leanref{Substrate/Glimmer.lean} and \leanref{Substrate/AxisA.lean}
+declaration named in \cref{sec:glimmer,rem:axisA}, plus \leanref{Substrate.law\_match\_pi2\_hard}
+and \leanref{Substrate.law\_match\_pi2\_hard\_zero}) and, for the remaining declarations in this
+table, an equivalent direct \texttt{\#print axioms} invocation against the built library, both
+re-run independently for this draft. Every named theorem depends on at most the three standard
+Mathlib axioms (\texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound});
+one (\leanref{Substrate.finitely\_determined\_compl}) depends on \emph{no} axioms at all. Zero
+custom axioms, confirmed.
+\end{quote}
+
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{6.7cm}>{\raggedright\arraybackslash}p{2.9cm}@{}}
+\toprule
+\textbf{Lean declaration} & \textbf{Statement} & \textbf{\#print axioms} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Lean declaration} & \textbf{Statement} & \textbf{\#print axioms} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\leanref{Substrate.transcript\_characterisation} & Lemma~2.1: \(f \in \D \leftrightarrow \mathrm{Computable}\ f\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.discrete\_subset\_continuum} & Lemma~2.2: \(\D \subseteq \mathtt{C}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.mem\_C} & Every \(f : \N \to \N\) lies in \(\mathtt{C}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.exists\_noncomputable\_nat\_fn} & \(\exists f, \neg\,\mathrm{Computable}\ f\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.not\_computable\_haltingIndicator} & Halting-indicator witness is not computable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.prefix\_indistinguishable} & Theorem~1: every prefix extends into both \(\D\) and \(\mathtt{Cstrict}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.D\_disjoint\_Cstrict} & \(\D\) and \(\mathtt{Cstrict}\) disjoint & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.not\_finitely\_determined\_of\_dense\_pair} & Abstract dense-pair form of Theorem~2, for arbitrary disjoint prefix-dense \(A,B \subseteq \N \to \N\); no \texttt{Computable}/\texttt{Nat.Partrec} dependence in the proof term & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.substrate\_not\_finitely\_determined} & Theorem~2: no finitely determined property separates \(\D\) from \(\mathtt{Cstrict}\), as the \(\D\)/\(\mathtt{Cstrict}\) instance of the abstract lemma above & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.sound\_for\_continuum\_never\_fires} & Theorem~3(a): continuum-sound test never fires & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.sound\_for\_discreteness\_never\_fires} & Theorem~3(b): discreteness-sound test never fires & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.certifier\_silent\_or\_unsound} & Theorem~3 combined & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.law\_match\_undecidable} & Theorem~4: law-match predicate is not computable, for any computable \(f\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.law\_match\_undecidable\_zero} & Corollary~4.1: Theorem~4 specialized to \(f \equiv 0\) (Paper~30 bridge) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.law\_match\_pi2\_hard} & Theorem~4\('\): \(\mathrm{Tot} \le_m \mathrm{LawMatches}(f,\cdot)\) for any computable \(f\), via a sequential-composition reduction (run the candidate to completion, discard the result, emit \(f\)); \(\mathrm{Tot}\)'s \(\Pi^0_2\)-completeness is external, not proved here & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.law\_match\_pi2\_hard\_zero} & Theorem~4\('\) specialized to \(f \equiv 0\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.internally\_decidable\_implies\_finitely\_determined} & Internally decidable \(\Rightarrow\) finitely determined & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.finitely\_determined\_compl} & Complement of a finitely determined property is finitely determined & \textbf{none} \\
+\leanref{Substrate.substrate\_not\_internally\_decidable} & Theorem~5 (Lean half): no internally decidable property separates \(\D\) from \(\mathtt{Cstrict}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.substrate\_not\_internally\_decidable'} & Symmetric separation & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.discrete\_not\_internally\_decidable} & \(f \in \D\) not internally decidable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.strict\_continuum\_not\_internally\_decidable} & \(f \in \mathtt{Cstrict}\) not internally decidable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.D\_countable} & \(\D\) is countable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.Cstrict\_not\_countable} & \(\mathtt{Cstrict}\) is not countable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.no\_joint\_substrate\_decision} & \cref{cor:cardinality}: no family of internal tests, over any index type, jointly decides discrete membership & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict} & Deterministic class-advantage obstruction: positive acceptance on \(\D\) iff positive acceptance on \(\mathtt{Cstrict}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.D\_null\_geometric} & \cref{cor:measure-typicality}: \(\D\) has measure zero under the geometric i.i.d.\ product on Baire space & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.Cstrict\_full\_mass\_geometric} & \cref{cor:measure-typicality}: \(\mathtt{Cstrict}\) has full measure under the same measure & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.limitComputable\_not\_finitely\_determined} & \cref{sec:glimmer}: the abstract dense-pair form of Theorem~2 applied to limit-computable vs.\ not-limit-computable sequences & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.computable\_not\_random} & \cref{sec:glimmer}, derivation-chain step~2's supporting fact: a computable, non-degenerate \(f\) admits a computable \(\mu\)-martingale that succeeds, hence is not computably random & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.glimmer\_not\_computable} & \cref{sec:glimmer}: a glimmer sequence is not computable & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.glimmer\_disjoint\_D} & \cref{sec:glimmer}: \(\mathrm{Glimmer}\) is disjoint from \(\D\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.glimmer\_subset\_Cstrict} & \cref{sec:glimmer}: every glimmer sequence lies in \(\mathtt{Cstrict}\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.glimmer\_finite\_description} & \cref{sec:glimmer}: a limit-computable sequence is fixed by one code plus a convergent stage function (non-vacuous finite-description witness) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.BetMartingale.bet\_succeeds} & \cref{sec:glimmer}: the bet-everything martingale construction succeeds on any computable, non-degenerate \(f\) & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.Dfin\_iff\_eventuallyPeriodic} & \cref{rem:axisA}: \(\mathtt{Dfin}\) coincides with the eventually periodic sequences & propext, Classical.choice, Quot.sound \\
+\leanref{Substrate.axisA\_not\_finitely\_determined} & \cref{rem:axisA}: the abstract dense-pair form of Theorem~2 applied to \(\mathtt{Dfin}\) vs.\ its complement & propext, Classical.choice, Quot.sound \\
+\end{longtable}
+\normalsize
+
+\noindent\textbf{Module map.}
+
+\footnotesize
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{9.9cm}@{}}
+\toprule
+\textbf{Module} & \textbf{Role} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Module} & \textbf{Role} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\leanref{Substrate/Basic.lean} & \leanref{Substrate.World}, transcript, \leanref{Substrate.D} / \leanref{Substrate.C} / \leanref{Substrate.Cstrict}, \leanref{Substrate.InternalTest}, \leanref{Substrate.FinitelyDetermined} \\
+\leanref{Substrate/Discrete.lean} & Lemma~2.1 \\
+\leanref{Substrate/Embed.lean} & Lemma~2.2 \\
+\leanref{Substrate/Noncomputable.lean} & Existence of a non-computable \(\N \to \N\) function, via the halting problem \\
+\leanref{Substrate/Prefix.lean} & Theorem~1 and the disjointness/density corollary \\
+\leanref{Substrate/NotFinDet.lean} & Theorem~2, and its abstract dense-pair generalization (\cref{thm:notfindet}'s keybox) \\
+\leanref{Substrate/Certifier.lean} & Theorem~3 \\
+\leanref{Substrate/LawBarrier.lean} & Theorem~4 (halting reduction via \texttt{evaln}) and Theorem~4\('\) (\(\Pi^0_2\)-hardness via the sequential-composition reduction) \\
+\leanref{Substrate/Outsourced.lean} & Theorem~5 (Lean-checkable half) \\
+\leanref{Substrate/Cardinality.lean} & \cref{cor:cardinality}: countability of \(\D\), non-countability of \(\mathtt{Cstrict}\), and the uncountable-observer strengthening \\
+\leanref{Substrate/Probabilistic.lean} & Deterministic class-advantage obstruction for probabilistic observers, and measure-zero / full-measure classification of \(\D\) / \(\mathtt{Cstrict}\) under a geometric product measure (\cref{cor:measure-typicality,sec:open}) \\
+\leanref{Substrate/Glimmer.lean} & \cref{sec:glimmer}: limit-computability, computable Born measures, computable martingales, computable randomness, and the glimmer class, with the bet-everything martingale construction and the class-1/2\('\)/2/3 separation theorems \\
+\leanref{Substrate/AxisA.lean} & \cref{rem:axisA}: the axis-A dense pair \(\mathtt{Dfin}\) (eventually periodic sequences) and its own instance of \cref{thm:notfindet} \\
+\end{longtable}
+\normalsize
+
+\section{Epistemic Status Table}
+\label{app:status}
+
+\footnotesize
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{9.5cm}>{\raggedright\arraybackslash}p{4.4cm}@{}}
+\toprule
+\textbf{Claim} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Claim} & \textbf{Status} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+Lemma~2.1, Lemma~2.2; Theorems~1--4; Corollary~1.1, Corollary~4.1 & \A~(machine-checked, Lean~4 / Mathlib, zero \texttt{sorry}, zero custom axioms) \\
+Abstract dense-pair form of Theorem~2 (\cref{thm:notfindet}'s keybox) & \A~(module \leanref{Substrate/NotFinDet.lean}; no \texttt{Computable}/\texttt{Nat.Partrec} dependence in the proof term) \\
+Theorem~4\('\) (\(\Pi^0_2\)-hardness of \(\mathrm{LawMatches}\), \leanref{Substrate.law\_match\_pi2\_hard}/\leanref{Substrate.law\_match\_pi2\_hard\_zero}) & \A~(module \leanref{Substrate/LawBarrier.lean}; \(\mathrm{Tot} \le_m \mathrm{LawMatches}(f,\cdot)\) via a sequential-composition reduction; \(\mathrm{Tot}\)'s \(\Pi^0_2\)-completeness is an external, cited recursion-theoretic fact, not proved in this repository) \\
+Theorem~5, outsourcing half (\cref{thm:outsourcing}) & \A \\
+Theorem~5, MDL-uniqueness half (\cref{thm:mdl-uniqueness}) & \AMDL~(argument cited to NEMS Papers~34/84; not a Mathlib reduction) \\
+Uncountable-observer strengthening of Theorem~5 (\cref{cor:cardinality}) & \A~(module \leanref{Substrate/Cardinality.lean}; closed no bounds on the index type \(I\), including uncountable) \\
+Probabilistic observers, deterministic class-advantage obstruction (\leanref{Substrate.acceptance\_on\_D\_iff\_Cstrict}) & \A~(module \leanref{Substrate/Probabilistic.lean}) \\
+Probabilistic observers, measure-zero / full-measure classification of \(\D\) / \(\mathtt{Cstrict}\) under a geometric product measure (\cref{cor:measure-typicality}) & \A~(module \leanref{Substrate/Probabilistic.lean}; uses Mathlib's Ionescu--Tulcea-based \texttt{Measure.infinitePi}) \\
+Probabilistic observers, \(\varepsilon\)-tolerant \emph{randomized} generalization (genuine internal randomness plus a class-charged mixture measure) & \textbf{Open} --- prefix indistinguishability transports individual witnesses but not aggregate class-conditional acceptance rates; a prefix-determined witness restatement (\leanref{Substrate.HasProbAcceptAbove}) adds no independent content and is omitted from Appendix~\ref{app:lean} on those grounds (\cref{sec:open}) \\
+\S\ref{sec:scaling} scaling-exponent classification & \textsc{d}~(discussion-level, not machine-checked, presented with citations) \\
+\S\ref{sec:glimmer} glimmer definitions (\leanref{Substrate.LimitComputable}, \leanref{Substrate.BornMeasure}, \leanref{Substrate.Glimmer}, etc.), limit-computability density pair, \leanref{Substrate.limitComputable\_not\_finitely\_determined}, \leanref{Substrate.glimmer\_finite\_description}, \leanref{Substrate.computable\_not\_random}, the bet-everything martingale construction (\leanref{Substrate.BetMartingale.bet}/\leanref{Substrate.BetMartingale.bet\_succeeds}), and the separations built on it (\leanref{Substrate.glimmer\_not\_computable}, \leanref{Substrate.glimmer\_disjoint\_D}, \leanref{Substrate.glimmer\_subset\_Cstrict}) & \A~(module \leanref{Substrate/Glimmer.lean}, part of the audited, sorry-free build; imported by \leanref{Substrate.lean}; every declaration confirmed by \texttt{\#print axioms} to depend on only \texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}) \\
+\S\ref{sec:glimmer} Glimmer non-emptiness (Chaitin's \(\Omega\)) & \A/\textsc{d}~(cited to Downey--Hirschfeldt \citep{DowneyHirschfeldt2010}, not built, by design) \\
+\S\ref{sec:glimmer} Born-martingale lemma (the physical completeness premise) & \textbf{Open} --- not proved here or anywhere in the programme at time of writing. Not a randomness-theory gap: the martingale/computable-randomness machinery (\leanref{Substrate.computable\_not\_random}, \leanref{Substrate.BetMartingale.bet\_succeeds}) is machine-checked (row above); the unrestricted universal form of the premise is in fact \emph{false} here (\leanref{Substrate.BetMartingale.bet\_succeeds} beats every \emph{computable} non-degenerate \(f\)), so defining ``complete internal semantics'' as ``\(f\) is computably random'' would smuggle the conclusion. The nearest existing candidate, \texttt{nems-lean}'s \texttt{BICS} (Papers~13/14), is a quantum semantic-architecture predicate over density operators, categorically the wrong kind of object for a realized-sequence bridge. What is missing is specifically a non-question-begging formalization of the physical premise as a predicate on realized transcripts (\cref{sec:open}) \\
+\cref{rem:axisA} axis-A pair (\leanref{Substrate.Dfin}, \leanref{Substrate.Dfin\_iff\_eventuallyPeriodic}, \leanref{Substrate.axisA\_not\_finitely\_determined}) & \A~(module \leanref{Substrate/AxisA.lean}, part of the audited, sorry-free build; imported by \leanref{Substrate.lean}; every declaration confirmed by \texttt{\#print axioms} to depend on only \texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}) \\
+\end{longtable}
+\normalsize
+
+% ============================================================================
+% BIBLIOGRAPHY
+% ============================================================================
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

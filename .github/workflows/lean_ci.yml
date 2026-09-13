@@ -1,0 +1,36 @@
+name: Lean CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: .
+      - name: Reject sorry in shipped modules
+        run: |
+          if grep -rn "sorry" Substrate/; then
+            echo "::error::sorry found in Substrate/ — zero-sorry policy violated"
+            exit 1
+          fi
+      - name: Axiom audit — reject non-standard axioms
+        run: |
+          set -o pipefail
+          output="$(lake env lean scripts/axiom_audit.lean)"
+          echo "$output"
+          if echo "$output" | grep -q "sorryAx"; then
+            echo "::error::sorryAx found in axiom audit — zero-sorry policy violated"
+            exit 1
+          fi
+          bad_lines="$(echo "$output" | grep "depends on axioms:" | sed -E 's/.*depends on axioms: \[(.*)\]/\1/' | tr ',' '\n' | sed -E 's/^ +| +$//g' | grep -Ev '^(propext|Classical\.choice|Quot\.sound)$' | grep -v '^$' || true)"
+          if [ -n "$bad_lines" ]; then
+            echo "::error::non-standard axiom(s) found in axiom audit output: $bad_lines"
+            exit 1
+          fi

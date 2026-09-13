@@ -1,0 +1,13 @@
+{
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.lake/**": true,
+    "**/build/**": true
+  },
+  "search.exclude": {
+    "**/.lake": true,
+    "**/.git": true
+  },
+  "python.analysis.include": [],
+  "cursorpyright.analysis.include": []
+}
