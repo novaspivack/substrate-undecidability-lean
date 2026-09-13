@@ -1,6 +1,6 @@
 # Paper — Substrate Undecidability
 
-**Title:** *Discrete or Continuous? Why No Internal Observer Can Decide, and What Can Adjudicate Instead*
+**Title:** *Substrate Undecidability: Why No Internal Observer Can Decide Whether Reality Is Discrete or Continuous, and What Can Adjudicate Instead*
 
 Source: [`Substrate_Undecidability.tex`](Substrate_Undecidability.tex) · Bibliography: [`refs.bib`](refs.bib) · Compiled PDF: [`Substrate_Undecidability.pdf`](Substrate_Undecidability.pdf)
 

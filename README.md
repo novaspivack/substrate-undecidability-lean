@@ -1,6 +1,6 @@
 # Substrate Undecidability (Lean)
 
-**Paper working title:** *Discrete or Continuous? Why No Internal Observer Can Decide, and What Can Adjudicate Instead*
+**Paper title:** *Substrate Undecidability: Why No Internal Observer Can Decide Whether Reality Is Discrete or Continuous, and What Can Adjudicate Instead*
 
 **Series:** NEMS core suite — bridges to UGP via the MDL adjudication corollary.
 
